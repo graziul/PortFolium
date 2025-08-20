@@ -1,0 +1,191 @@
+import api from './api';
+
+export interface Experience {
+  id: string;
+  title: string;
+  company: string;
+  location?: string;
+  startDate: string;
+  endDate?: string;
+  current: boolean;
+  description: string;
+  achievements: string[];
+}
+
+export interface Education {
+  id: string;
+  degree: string;
+  institution: string;
+  location?: string;
+  startDate: string;
+  endDate?: string;
+  gpa?: string;
+  description?: string;
+}
+
+export interface UserProfile {
+  _id: string;
+  email: string;
+  name: string;
+  bio: string;
+  location: string;
+  phone: string;
+  socialLinks: {
+    linkedin: string;
+    github: string;
+    twitter: string;
+    website: string;
+  };
+  experiences?: Experience[];
+  education?: Education[];
+  certifications?: string[];
+  languages?: string[];
+  createdAt: string;
+  lastLoginAt: string;
+  isActive: boolean;
+}
+
+export interface UpdateProfileData {
+  name?: string;
+  bio?: string;
+  location?: string;
+  phone?: string;
+  socialLinks?: {
+    linkedin?: string;
+    github?: string;
+    twitter?: string;
+    website?: string;
+  };
+  experiences?: Experience[];
+  education?: Education[];
+  certifications?: string[];
+  languages?: string[];
+}
+
+// Description: Get current user's profile information
+// Endpoint: GET /api/users/profile
+// Request: {}
+// Response: UserProfile
+export const getUserProfile = async (): Promise<UserProfile> => {
+  try {
+    console.log('Fetching user profile...');
+    const response = await api.get('/api/users/profile');
+    console.log('User profile fetched successfully');
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching user profile:', error);
+    throw new Error(error?.response?.data?.message || error.message);
+  }
+};
+
+// Description: Update current user's profile information
+// Endpoint: PUT /api/users/profile
+// Request: UpdateProfileData
+// Response: UserProfile
+export const updateUserProfile = async (profileData: UpdateProfileData): Promise<UserProfile> => {
+  try {
+    console.log('Updating user profile...', profileData);
+    const response = await api.put('/api/users/profile', profileData);
+    console.log('User profile updated successfully');
+    return response.data;
+  } catch (error: any) {
+    console.error('Error updating user profile:', error);
+    throw new Error(error?.response?.data?.message || error.message);
+  }
+};
+
+// Description: Add professional experience to user profile
+// Endpoint: POST /api/users/profile/experience
+// Request: Omit<Experience, 'id'>
+// Response: Experience
+export const addExperience = async (experienceData: Omit<Experience, 'id'>): Promise<Experience> => {
+  try {
+    console.log('Adding experience...', experienceData);
+    const response = await api.post('/api/users/profile/experience', experienceData);
+    console.log('Experience added successfully');
+    return response.data;
+  } catch (error: any) {
+    console.error('Error adding experience:', error);
+    throw new Error(error?.response?.data?.message || error.message);
+  }
+};
+
+// Description: Update professional experience in user profile
+// Endpoint: PUT /api/users/profile/experience/:id
+// Request: Omit<Experience, 'id'>
+// Response: Experience
+export const updateExperience = async (experienceId: string, experienceData: Omit<Experience, 'id'>): Promise<Experience> => {
+  try {
+    console.log('Updating experience...', experienceId, experienceData);
+    const response = await api.put(`/api/users/profile/experience/${experienceId}`, experienceData);
+    console.log('Experience updated successfully');
+    return response.data;
+  } catch (error: any) {
+    console.error('Error updating experience:', error);
+    throw new Error(error?.response?.data?.message || error.message);
+  }
+};
+
+// Description: Delete professional experience from user profile
+// Endpoint: DELETE /api/users/profile/experience/:id
+// Request: {}
+// Response: { message: string }
+export const deleteExperience = async (experienceId: string): Promise<{ message: string }> => {
+  try {
+    console.log('Deleting experience...', experienceId);
+    const response = await api.delete(`/api/users/profile/experience/${experienceId}`);
+    console.log('Experience deleted successfully');
+    return response.data;
+  } catch (error: any) {
+    console.error('Error deleting experience:', error);
+    throw new Error(error?.response?.data?.message || error.message);
+  }
+};
+
+// Description: Add education to user profile
+// Endpoint: POST /api/users/profile/education
+// Request: Omit<Education, 'id'>
+// Response: Education
+export const addEducation = async (educationData: Omit<Education, 'id'>): Promise<Education> => {
+  try {
+    console.log('Adding education...', educationData);
+    const response = await api.post('/api/users/profile/education', educationData);
+    console.log('Education added successfully');
+    return response.data;
+  } catch (error: any) {
+    console.error('Error adding education:', error);
+    throw new Error(error?.response?.data?.message || error.message);
+  }
+};
+
+// Description: Update education in user profile
+// Endpoint: PUT /api/users/profile/education/:id
+// Request: Omit<Education, 'id'>
+// Response: Education
+export const updateEducation = async (educationId: string, educationData: Omit<Education, 'id'>): Promise<Education> => {
+  try {
+    console.log('Updating education...', educationId, educationData);
+    const response = await api.put(`/api/users/profile/education/${educationId}`, educationData);
+    console.log('Education updated successfully');
+    return response.data;
+  } catch (error: any) {
+    console.error('Error updating education:', error);
+    throw new Error(error?.response?.data?.message || error.message);
+  }
+};
+
+// Description: Delete education from user profile
+// Endpoint: DELETE /api/users/profile/education/:id
+// Request: {}
+// Response: { message: string }
+export const deleteEducation = async (educationId: string): Promise<{ message: string }> => {
+  try {
+    console.log('Deleting education...', educationId);
+    const response = await api.delete(`/api/users/profile/education/${educationId}`);
+    console.log('Education deleted successfully');
+    return response.data;
+  } catch (error: any) {
+    console.error('Error deleting education:', error);
+    throw new Error(error?.response?.data?.message || error.message);
+  }
+};
