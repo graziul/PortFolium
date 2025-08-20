@@ -31,9 +31,28 @@ app.use('/api/users/profile', require('./routes/profile')); // Add this line if 
 // Serve static files from the React app in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/dist')));
-  
+
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+  });
+} else {
+  // Development mode - provide helpful message for non-API routes
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+      res.json({
+        message: 'PortFolium Development Server',
+        note: 'Frontend is running on http://localhost:5173',
+        backend: 'http://localhost:3000',
+        api: 'http://localhost:3000/api',
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.status(404).json({
+        error: 'API endpoint not found',
+        path: req.path,
+        method: req.method
+      });
+    }
   });
 }
 
@@ -43,7 +62,7 @@ app.use(errorLogger);
 // Global error handler
 app.use((error, req, res, next) => {
   serverLogger.error('Unhandled error:', error);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal server error',
     message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
   });
@@ -61,6 +80,8 @@ const startServer = async () => {
     app.listen(PORT, () => {
       serverLogger.info(`Server running on port ${PORT}`);
       serverLogger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      serverLogger.info(`Frontend should be available at: http://localhost:5173`);
+      serverLogger.info(`Backend API available at: http://localhost:${PORT}/api`);
     });
   } catch (error) {
     serverLogger.error('Failed to start server:', error);

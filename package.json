@@ -1,0 +1,24 @@
+{
+  "name": "portfolium",
+  "version": "1.0.0",
+  "description": "Personal Portfolio Website with Project Tracker & Blog",
+  "scripts": {
+    "preinstall": "echo 'Installing root dependencies...'",
+    "postinstall": "echo 'Root installation complete. Run npm run setup to install all dependencies.'",
+    "setup": "echo 'Installing client dependencies...' && cd client && npm install && echo 'Installing server dependencies...' && cd ../server && npm install && echo 'Setup complete!'",
+    "start": "concurrently \"npm run server\" \"npm run client\"",
+    "client": "cd client && npm run dev",
+    "server": "cd server && npm run dev",
+    "build": "cd client && npm run build",
+    "dev": "npm start",
+    "clean": "echo 'Cleaning node_modules...' && rm -rf node_modules client/node_modules server/node_modules",
+    "reinstall": "npm run clean && npm install && npm run setup"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+}
