@@ -3,19 +3,46 @@ const User = require('../models/User');
 // Get user profile
 const getUserProfile = async (req, res) => {
   try {
-    console.log('Fetching user profile for user ID:', req.user.id);
+    console.log('ProfileController: getUserProfile called');
+    console.log('ProfileController: Request user object:', req.user);
+    console.log('ProfileController: User ID from token:', req.user?.id);
+
+    if (!req.user || !req.user.id) {
+      console.error('ProfileController: No user ID found in request');
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    console.log('ProfileController: Searching for user in database with ID:', req.user.id);
 
     const user = await User.findById(req.user.id).select('-password');
 
+    console.log('ProfileController: Database query completed');
+    console.log('ProfileController: User found:', !!user);
+
     if (!user) {
-      console.error('User not found with ID:', req.user.id);
+      console.error('ProfileController: User not found in database with ID:', req.user.id);
       return res.status(404).json({ error: 'User not found' });
     }
 
-    console.log('User profile fetched successfully for:', user.email);
+    console.log('ProfileController: User profile data:', {
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      bio: user.bio,
+      location: user.location,
+      phone: user.phone,
+      hasExperiences: !!user.experiences,
+      experiencesCount: user.experiences?.length || 0,
+      hasEducation: !!user.education,
+      educationCount: user.education?.length || 0
+    });
+
+    console.log('ProfileController: Sending user profile response');
     res.json(user);
   } catch (error) {
-    console.error('Error fetching user profile:', error.message, error.stack);
+    console.error('ProfileController: Error in getUserProfile:', error.message);
+    console.error('ProfileController: Error stack:', error.stack);
+    console.error('ProfileController: Full error object:', error);
     res.status(500).json({ error: 'Server error while fetching profile' });
   }
 };
@@ -23,38 +50,81 @@ const getUserProfile = async (req, res) => {
 // Update user profile
 const updateUserProfile = async (req, res) => {
   try {
-    console.log('Updating user profile for user ID:', req.user.id);
-    console.log('Update data:', req.body);
+    console.log('ProfileController: Starting updateUserProfile');
+    console.log('ProfileController: User ID from token:', req.user.id);
+    console.log('ProfileController: Request body:', JSON.stringify(req.body, null, 2));
 
     const { name, bio, location, phone, socialLinks, experiences, education, certifications, languages } = req.body;
 
+    console.log('ProfileController: Searching for user in database...');
     const user = await User.findById(req.user.id);
 
     if (!user) {
-      console.error('User not found with ID:', req.user.id);
+      console.error('ProfileController: User not found with ID:', req.user.id);
       return res.status(404).json({ error: 'User not found' });
     }
 
+    console.log('ProfileController: User found:', user.email);
+    console.log('ProfileController: Current user data:', {
+      name: user.name,
+      bio: user.bio,
+      location: user.location,
+      phone: user.phone,
+      socialLinks: user.socialLinks
+    });
+
     // Update fields if provided
-    if (name !== undefined) user.name = name;
-    if (bio !== undefined) user.bio = bio;
-    if (location !== undefined) user.location = location;
-    if (phone !== undefined) user.phone = phone;
-    if (socialLinks !== undefined) user.socialLinks = socialLinks;
-    if (experiences !== undefined) user.experiences = experiences;
-    if (education !== undefined) user.education = education;
-    if (certifications !== undefined) user.certifications = certifications;
-    if (languages !== undefined) user.languages = languages;
+    if (name !== undefined) {
+      console.log('ProfileController: Updating name from', user.name, 'to', name);
+      user.name = name;
+    }
+    if (bio !== undefined) {
+      console.log('ProfileController: Updating bio from', user.bio, 'to', bio);
+      user.bio = bio;
+    }
+    if (location !== undefined) {
+      console.log('ProfileController: Updating location from', user.location, 'to', location);
+      user.location = location;
+    }
+    if (phone !== undefined) {
+      console.log('ProfileController: Updating phone from', user.phone, 'to', phone);
+      user.phone = phone;
+    }
+    if (socialLinks !== undefined) {
+      console.log('ProfileController: Updating socialLinks from', user.socialLinks, 'to', socialLinks);
+      user.socialLinks = socialLinks;
+    }
+    if (experiences !== undefined) {
+      console.log('ProfileController: Updating experiences');
+      user.experiences = experiences;
+    }
+    if (education !== undefined) {
+      console.log('ProfileController: Updating education');
+      user.education = education;
+    }
+    if (certifications !== undefined) {
+      console.log('ProfileController: Updating certifications');
+      user.certifications = certifications;
+    }
+    if (languages !== undefined) {
+      console.log('ProfileController: Updating languages');
+      user.languages = languages;
+    }
 
+    console.log('ProfileController: Saving user to database...');
     await user.save();
+    console.log('ProfileController: User saved successfully');
 
-    console.log('User profile updated successfully for:', user.email);
-
+    console.log('ProfileController: Fetching updated user data...');
     // Return updated user without password
     const updatedUser = await User.findById(req.user.id).select('-password');
+    console.log('ProfileController: Updated user data fetched successfully');
+    console.log('ProfileController: Sending response with updated user data');
     res.json(updatedUser);
   } catch (error) {
-    console.error('Error updating user profile:', error.message, error.stack);
+    console.error('ProfileController: Error updating user profile:', error.message);
+    console.error('ProfileController: Error stack:', error.stack);
+    console.error('ProfileController: Error details:', error);
     res.status(500).json({ error: 'Server error while updating profile' });
   }
 };

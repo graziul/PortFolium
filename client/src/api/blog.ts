@@ -5,221 +5,208 @@ export interface BlogPost {
   title: string;
   content: string;
   excerpt: string;
-  imageUrl?: string;
+  featuredImage?: string;
   tags: string[];
-  published: boolean;
-  userId: string;
-  createdAt: string;
+  category: string;
+  publishedAt: string;
   updatedAt: string;
+  userId: string;
+  status: 'draft' | 'published';
+  readingTime: number;
 }
 
-// Description: Upload an image for a blog post
-// Endpoint: POST /api/blog-posts/upload
-// Request: FormData with 'image' file
-// Response: { imageUrl: string }
-export const uploadBlogImage = async (file: File) => {
-  console.log('BlogAPI: uploadBlogImage called with file:', file.name, file.size);
+export interface CreateBlogPostData {
+  title: string;
+  content: string;
+  excerpt: string;
+  featuredImage?: string;
+  tags: string[];
+  category: string;
+  status: 'draft' | 'published';
+}
 
-  try {
-    const formData = new FormData();
-    formData.append('image', file);
-    const response = await api.post('/api/blog-posts/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    console.log('BlogAPI: uploadBlogImage response:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('BlogAPI: uploadBlogImage error:', error);
-    throw new Error(error?.response?.data?.error || error.message);
-  }
+export interface UpdateBlogPostData extends Partial<CreateBlogPostData> {}
 
-  // Mocking the response (commented out for production)
-  // return new Promise((resolve) => {
-  //   setTimeout(() => {
-  //     const mockUrl = `/uploads/blog/${Date.now()}-${file.name}`;
-  //     console.log('BlogAPI: uploadBlogImage mock response:', mockUrl);
-  //     resolve({ imageUrl: mockUrl });
-  //   }, 1000);
-  // });
-};
-
-// Description: Get all blog posts for the authenticated user
-// Endpoint: GET /api/blog-posts
+// Description: Get all blog posts for the current user
+// Endpoint: GET /api/blog
 // Request: {}
 // Response: { posts: BlogPost[] }
-export const getBlogPosts = async () => {
-  console.log('BlogAPI: getBlogPosts called');
-
-  try {
-    const response = await api.get('/api/blog-posts');
-    console.log('BlogAPI: getBlogPosts response:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('BlogAPI: getBlogPosts error:', error);
-    throw new Error(error?.response?.data?.error || error.message);
-  }
-
-  // Mocking the response (commented out for production)
-  // return new Promise((resolve) => {
-  //   setTimeout(() => {
-  //     const mockPosts = [
-  //       {
-  //         _id: '1',
-  //         title: 'Getting Started with React',
-  //         content: 'React is a popular JavaScript library...',
-  //         excerpt: 'Learn the basics of React development',
-  //         imageUrl: '/uploads/blog/react-post.jpg',
-  //         tags: ['React', 'JavaScript', 'Web Development'],
-  //         published: true,
-  //         userId: 'user1',
-  //         createdAt: '2024-01-15T10:00:00Z',
-  //         updatedAt: '2024-01-20T15:30:00Z'
-  //       },
-  //       {
-  //         _id: '2',
-  //         title: 'Node.js Best Practices',
-  //         content: 'When building Node.js applications...',
-  //         excerpt: 'Essential tips for Node.js development',
-  //         tags: ['Node.js', 'Backend', 'JavaScript'],
-  //         published: true,
-  //         userId: 'user1',
-  //         createdAt: '2024-02-01T09:00:00Z',
-  //         updatedAt: '2024-02-10T14:20:00Z'
-  //       }
-  //     ];
-  //     console.log('BlogAPI: getBlogPosts mock response:', mockPosts.length, 'posts');
-  //     resolve({ posts: mockPosts });
-  //   }, 500);
-  // });
+export const getBlogPosts = async (): Promise<{ posts: BlogPost[] }> => {
+  // Mocking the response
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        posts: [
+          {
+            _id: '1',
+            title: 'Getting Started with React',
+            content: 'React is a powerful JavaScript library...',
+            excerpt: 'Learn the basics of React development',
+            featuredImage: 'https://via.placeholder.com/400x200',
+            tags: ['React', 'JavaScript', 'Frontend'],
+            category: 'Development',
+            publishedAt: '2024-01-15T10:00:00Z',
+            updatedAt: '2024-01-15T10:00:00Z',
+            userId: 'user123',
+            status: 'published',
+            readingTime: 5
+          },
+          {
+            _id: '2',
+            title: 'Advanced TypeScript Patterns',
+            content: 'TypeScript offers many advanced features...',
+            excerpt: 'Explore advanced TypeScript patterns and techniques',
+            featuredImage: 'https://via.placeholder.com/400x200',
+            tags: ['TypeScript', 'JavaScript', 'Programming'],
+            category: 'Development',
+            publishedAt: '2024-01-10T14:30:00Z',
+            updatedAt: '2024-01-10T14:30:00Z',
+            userId: 'user123',
+            status: 'published',
+            readingTime: 8
+          }
+        ]
+      });
+    }, 500);
+  });
+  // Uncomment the below lines to make an actual API call
+  // try {
+  //   return await api.get('/api/blog');
+  // } catch (error) {
+  //   throw new Error(error?.response?.data?.error || error.message);
+  // }
 };
 
 // Description: Get a single blog post by ID
-// Endpoint: GET /api/blog-posts/:id
+// Endpoint: GET /api/blog/:id
 // Request: {}
-// Response: { post: BlogPost }
-export const getBlogPost = async (id: string) => {
-  console.log('BlogAPI: getBlogPost called with id:', id);
-
-  try {
-    const response = await api.get(`/api/blog-posts/${id}`);
-    console.log('BlogAPI: getBlogPost response:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('BlogAPI: getBlogPost error:', error);
-    throw new Error(error?.response?.data?.error || error.message);
-  }
-
-  // Mocking the response (commented out for production)
-  // return new Promise((resolve) => {
-  //   setTimeout(() => {
-  //     const mockPost = {
-  //       _id: id,
-  //       title: 'Sample Blog Post',
-  //       content: 'This is a sample blog post content...',
-  //       excerpt: 'Sample excerpt',
-  //       imageUrl: '/uploads/blog/sample.jpg',
-  //       tags: ['Sample', 'Blog'],
-  //       published: true,
-  //       userId: 'user1',
-  //       createdAt: '2024-01-01T00:00:00Z',
-  //       updatedAt: '2024-01-01T00:00:00Z'
-  //     };
-  //     console.log('BlogAPI: getBlogPost mock response for id:', id, mockPost);
-  //     resolve({ post: mockPost });
-  //   }, 500);
-  // });
+// Response: BlogPost
+export const getBlogPost = async (id: string): Promise<BlogPost> => {
+  // Mocking the response
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        _id: id,
+        title: 'Sample Blog Post',
+        content: 'This is the full content of the blog post...',
+        excerpt: 'This is a sample blog post excerpt',
+        featuredImage: 'https://via.placeholder.com/800x400',
+        tags: ['Sample', 'Blog'],
+        category: 'General',
+        publishedAt: '2024-01-15T10:00:00Z',
+        updatedAt: '2024-01-15T10:00:00Z',
+        userId: 'user123',
+        status: 'published',
+        readingTime: 5
+      });
+    }, 500);
+  });
+  // Uncomment the below lines to make an actual API call
+  // try {
+  //   return await api.get(`/api/blog/${id}`);
+  // } catch (error) {
+  //   throw new Error(error?.response?.data?.error || error.message);
+  // }
 };
 
 // Description: Create a new blog post
-// Endpoint: POST /api/blog-posts
-// Request: { title: string, content: string, excerpt: string, imageUrl?: string, tags: string[], published: boolean }
-// Response: { post: BlogPost, message: string }
-export const createBlogPost = async (postData: Omit<BlogPost, '_id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
-  console.log('BlogAPI: createBlogPost called with data:', postData);
-
-  try {
-    const response = await api.post('/api/blog-posts', postData);
-    console.log('BlogAPI: createBlogPost response:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('BlogAPI: createBlogPost error:', error);
-    throw new Error(error?.response?.data?.error || error.message);
-  }
-
-  // Mocking the response (commented out for production)
-  // return new Promise((resolve) => {
-  //   setTimeout(() => {
-  //     const newPost = {
-  //       ...postData,
-  //       _id: Date.now().toString(),
-  //       userId: 'user1',
-  //       createdAt: new Date().toISOString(),
-  //       updatedAt: new Date().toISOString()
-  //     };
-  //     console.log('BlogAPI: createBlogPost mock response:', newPost);
-  //     resolve({ post: newPost, message: 'Blog post created successfully' });
-  //   }, 1000);
-  // });
+// Endpoint: POST /api/blog
+// Request: CreateBlogPostData
+// Response: BlogPost
+export const createBlogPost = async (postData: CreateBlogPostData): Promise<BlogPost> => {
+  // Mocking the response
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        _id: Date.now().toString(),
+        ...postData,
+        publishedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        userId: 'user123',
+        readingTime: Math.ceil(postData.content.split(' ').length / 200)
+      });
+    }, 500);
+  });
+  // Uncomment the below lines to make an actual API call
+  // try {
+  //   return await api.post('/api/blog', postData);
+  // } catch (error) {
+  //   throw new Error(error?.response?.data?.error || error.message);
+  // }
 };
 
 // Description: Update an existing blog post
-// Endpoint: PUT /api/blog-posts/:id
-// Request: { title?: string, content?: string, excerpt?: string, imageUrl?: string, tags?: string[], published?: boolean }
-// Response: { post: BlogPost, message: string }
-export const updateBlogPost = async (id: string, postData: Partial<Omit<BlogPost, '_id' | 'userId' | 'createdAt' | 'updatedAt'>>) => {
-  console.log('BlogAPI: updateBlogPost called with id:', id, 'data:', postData);
-
-  try {
-    const response = await api.put(`/api/blog-posts/${id}`, postData);
-    console.log('BlogAPI: updateBlogPost response:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('BlogAPI: updateBlogPost error:', error);
-    throw new Error(error?.response?.data?.error || error.message);
-  }
-
-  // Mocking the response (commented out for production)
-  // return new Promise((resolve) => {
-  //   setTimeout(() => {
-  //     const updatedPost = {
-  //       _id: id,
-  //       title: 'Updated Post',
-  //       content: 'Updated content',
-  //       excerpt: 'Updated excerpt',
-  //       tags: ['Updated'],
-  //       published: true,
-  //       userId: 'user1',
-  //       createdAt: '2024-01-01T00:00:00Z',
-  //       updatedAt: new Date().toISOString(),
-  //       ...postData
-  //     };
-  //     console.log('BlogAPI: updateBlogPost mock response:', updatedPost);
-  //     resolve({ post: updatedPost, message: 'Blog post updated successfully' });
-  //   }, 1000);
-  // });
+// Endpoint: PUT /api/blog/:id
+// Request: UpdateBlogPostData
+// Response: BlogPost
+export const updateBlogPost = async (id: string, postData: UpdateBlogPostData): Promise<BlogPost> => {
+  // Mocking the response
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        _id: id,
+        title: postData.title || 'Updated Post',
+        content: postData.content || 'Updated content',
+        excerpt: postData.excerpt || 'Updated excerpt',
+        featuredImage: postData.featuredImage,
+        tags: postData.tags || [],
+        category: postData.category || 'General',
+        publishedAt: '2024-01-15T10:00:00Z',
+        updatedAt: new Date().toISOString(),
+        userId: 'user123',
+        status: postData.status || 'published',
+        readingTime: Math.ceil((postData.content?.split(' ').length || 100) / 200)
+      });
+    }, 500);
+  });
+  // Uncomment the below lines to make an actual API call
+  // try {
+  //   return await api.put(`/api/blog/${id}`, postData);
+  // } catch (error) {
+  //   throw new Error(error?.response?.data?.error || error.message);
+  // }
 };
 
 // Description: Delete a blog post
-// Endpoint: DELETE /api/blog-posts/:id
+// Endpoint: DELETE /api/blog/:id
 // Request: {}
 // Response: { message: string }
-export const deleteBlogPost = async (id: string) => {
-  console.log('BlogAPI: deleteBlogPost called with id:', id);
+export const deleteBlogPost = async (id: string): Promise<{ message: string }> => {
+  // Mocking the response
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({ message: 'Blog post deleted successfully' });
+    }, 500);
+  });
+  // Uncomment the below lines to make an actual API call
+  // try {
+  //   return await api.delete(`/api/blog/${id}`);
+  // } catch (error) {
+  //   throw new Error(error?.response?.data?.error || error.message);
+  // }
+};
 
-  try {
-    const response = await api.delete(`/api/blog-posts/${id}`);
-    console.log('BlogAPI: deleteBlogPost response:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('BlogAPI: deleteBlogPost error:', error);
-    throw new Error(error?.response?.data?.error || error.message);
-  }
-
-  // Mocking the response (commented out for production)
-  // return new Promise((resolve) => {
-  //   setTimeout(() => {
-  //     console.log('BlogAPI: deleteBlogPost mock response for id:', id);
-  //     resolve({ message: 'Blog post deleted successfully' });
-  //   }, 500);
-  // });
+// Description: Upload image for blog post
+// Endpoint: POST /api/blog/upload-image
+// Request: FormData with image file
+// Response: { imageUrl: string }
+export const uploadBlogImage = async (imageFile: File): Promise<{ imageUrl: string }> => {
+  // Mocking the response
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({ imageUrl: 'https://via.placeholder.com/800x400' });
+    }, 1000);
+  });
+  // Uncomment the below lines to make an actual API call
+  // try {
+  //   const formData = new FormData();
+  //   formData.append('image', imageFile);
+  //   return await api.post('/api/blog/upload-image', formData, {
+  //     headers: {
+  //       'Content-Type': 'multipart/form-data',
+  //     },
+  //   });
+  // } catch (error) {
+  //   throw new Error(error?.response?.data?.error || error.message);
+  // }
 };

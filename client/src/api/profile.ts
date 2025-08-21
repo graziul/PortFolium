@@ -68,13 +68,27 @@ export interface UpdateProfileData {
 // Response: UserProfile
 export const getUserProfile = async (): Promise<UserProfile> => {
   try {
-    console.log('Fetching user profile...');
+    console.log('Profile API: Starting getUserProfile request');
+    console.log('Profile API: Making GET request to /api/users/profile');
+    
     const response = await api.get('/api/users/profile');
-    console.log('User profile fetched successfully');
+    
+    console.log('Profile API: Received response from /api/users/profile');
+    console.log('Profile API: Response status:', response.status);
+    console.log('Profile API: Response data:', response.data);
+    console.log('Profile API: User profile fetched successfully');
+    
     return response.data;
   } catch (error: any) {
-    console.error('Error fetching user profile:', error);
-    throw new Error(error?.response?.data?.message || error.message);
+    console.error('Profile API: Error in getUserProfile');
+    console.error('Profile API: Error object:', error);
+    console.error('Profile API: Error message:', error.message);
+    console.error('Profile API: Error response:', error.response);
+    console.error('Profile API: Error response status:', error.response?.status);
+    console.error('Profile API: Error response data:', error.response?.data);
+    console.error('Profile API: Error response headers:', error.response?.headers);
+    
+    throw new Error(error?.response?.data?.error || error.message);
   }
 };
 
@@ -84,13 +98,19 @@ export const getUserProfile = async (): Promise<UserProfile> => {
 // Response: UserProfile
 export const updateUserProfile = async (profileData: UpdateProfileData): Promise<UserProfile> => {
   try {
-    console.log('Updating user profile...', profileData);
+    console.log('Profile API: Starting updateUserProfile with data:', profileData);
+    console.log('Profile API: Making PUT request to /api/users/profile');
     const response = await api.put('/api/users/profile', profileData);
-    console.log('User profile updated successfully');
+    console.log('Profile API: Received response:', response);
+    console.log('Profile API: Response data:', response.data);
+    console.log('Profile API: User profile updated successfully');
     return response.data;
   } catch (error: any) {
-    console.error('Error updating user profile:', error);
-    throw new Error(error?.response?.data?.message || error.message);
+    console.error('Profile API: Error updating user profile:', error);
+    console.error('Profile API: Error response:', error.response);
+    console.error('Profile API: Error response data:', error.response?.data);
+    console.error('Profile API: Error response status:', error.response?.status);
+    throw new Error(error?.response?.data?.error || error.message);
   }
 };
 
@@ -106,7 +126,7 @@ export const addExperience = async (experienceData: Omit<Experience, 'id'>): Pro
     return response.data;
   } catch (error: any) {
     console.error('Error adding experience:', error);
-    throw new Error(error?.response?.data?.message || error.message);
+    throw new Error(error?.response?.data?.error || error.message);
   }
 };
 
@@ -122,7 +142,7 @@ export const updateExperience = async (experienceId: string, experienceData: Omi
     return response.data;
   } catch (error: any) {
     console.error('Error updating experience:', error);
-    throw new Error(error?.response?.data?.message || error.message);
+    throw new Error(error?.response?.data?.error || error.message);
   }
 };
 
@@ -138,7 +158,7 @@ export const deleteExperience = async (experienceId: string): Promise<{ message:
     return response.data;
   } catch (error: any) {
     console.error('Error deleting experience:', error);
-    throw new Error(error?.response?.data?.message || error.message);
+    throw new Error(error?.response?.data?.error || error.message);
   }
 };
 
@@ -154,7 +174,7 @@ export const addEducation = async (educationData: Omit<Education, 'id'>): Promis
     return response.data;
   } catch (error: any) {
     console.error('Error adding education:', error);
-    throw new Error(error?.response?.data?.message || error.message);
+    throw new Error(error?.response?.data?.error || error.message);
   }
 };
 
@@ -170,7 +190,7 @@ export const updateEducation = async (educationId: string, educationData: Omit<E
     return response.data;
   } catch (error: any) {
     console.error('Error updating education:', error);
-    throw new Error(error?.response?.data?.message || error.message);
+    throw new Error(error?.response?.data?.error || error.message);
   }
 };
 
@@ -186,6 +206,6 @@ export const deleteEducation = async (educationId: string): Promise<{ message: s
     return response.data;
   } catch (error: any) {
     console.error('Error deleting education:', error);
-    throw new Error(error?.response?.data?.message || error.message);
+    throw new Error(error?.response?.data?.error || error.message);
   }
 };
