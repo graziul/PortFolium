@@ -9,44 +9,66 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { getProjects, Project } from '@/api/projects';
 import { getBlogPosts, BlogPost } from '@/api/blog';
 import { getSkills, Skill } from '@/api/skills';
+import { getHomeContent, HomeContent } from '@/api/homeContent';
+import { HomeContentForm } from '@/components/HomeContentForm';
 import { useToast } from '@/hooks/useToast';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [homeContent, setHomeContent] = useState<HomeContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [hoveredCollabCard, setHoveredCollabCard] = useState<string | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const { toast } = useToast();
-
-  // Mock collaborator data for now
-  const mockCollaboratorStats = {
-    academia: { total: 5, subcategories: { postdoc: 2, junior_faculty: 2, senior_faculty: 1 } },
-    industry: { total: 3, subcategories: { industry_tech: 2, industry_finance: 1, industry_healthcare: 0 } },
-    students: { total: 4, subcategories: { undergraduate: 2, graduate: 2 } },
-    others: { total: 2, subcategories: { professional_ethicist: 1, journalist: 1 } }
-  };
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('Fetching home page data...');
+        console.log('Home: Fetching home page data...');
+
+        // Fetch projects, blog posts, and skills first (these work)
         const [projectsResponse, blogResponse, skillsResponse] = await Promise.all([
           getProjects(),
           getBlogPosts(),
           getSkills()
         ]);
 
-        setProjects((projectsResponse as any).projects.slice(0, 3));
+        setProjects((projectsResponse as any).projects);
         setBlogPosts((blogResponse as any).posts.slice(0, 2));
         setSkills((skillsResponse as any).skills);
+
+        // Try to fetch home content, but don't fail if it doesn't exist
+        try {
+          const homeContentResponse = await getHomeContent();
+          setHomeContent(homeContentResponse.homeContent);
+        } catch (homeError) {
+          console.log('Home: Home content not found, using defaults');
+          // Set default home content
+          setHomeContent({
+            name: 'Your Name',
+            tagline: 'Your professional tagline here',
+            bio: 'Tell your professional story here...',
+            yearsExperience: 0,
+            coreExpertise: [],
+            socialLinks: {
+              linkedin: '',
+              github: '',
+              twitter: '',
+              website: ''
+            }
+          });
+        }
+
         console.log('Home page data loaded successfully');
       } catch (error) {
-        console.error('Error loading home page data:', error);
+        console.error('Home: Error loading home page data:', error);
         toast({
           title: "Error",
-          description: "Failed to load content. Please try again.",
+          description: "Failed to load some content. Please try again.",
           variant: "destructive",
         });
       } finally {
@@ -84,6 +106,33 @@ export function Home() {
     }
   };
 
+  const handleCompletedProjectsClick = () => {
+    navigate('/projects?status=completed');
+  };
+
+  const handleActiveProjectsClick = () => {
+    navigate('/project-tracker');
+  };
+
+  const handleBlogArticlesClick = () => {
+    navigate('/blog');
+  };
+
+  const handleEditSuccess = async () => {
+    setShowEditDialog(false);
+    // Refresh home content
+    try {
+      const homeContentResponse = await getHomeContent();
+      setHomeContent(homeContentResponse.homeContent);
+      toast({
+        title: "Success",
+        description: "Home content updated successfully.",
+      });
+    } catch (error) {
+      console.error('Home: Error refreshing home content:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -92,7 +141,8 @@ export function Home() {
     );
   }
 
-  const totalCollaborators = Object.values(mockCollaboratorStats).reduce((sum, category) => sum + category.total, 0);
+  const totalCollaborators = homeContent?.collaboratorStats ?
+    Object.values(homeContent.collaboratorStats).reduce((sum, category) => sum + category.total, 0) : 0;
 
   return (
     <div className="space-y-16">
@@ -111,11 +161,26 @@ export function Home() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2, duration: 0.6 }}
             >
-              <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                John Doe
-              </h1>
+              <div className="flex items-center gap-4 mb-4">
+                <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  {homeContent?.name || 'Your Name'}
+                </h1>
+                <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="opacity-70 hover:opacity-100">
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Edit Home Page Content</DialogTitle>
+                    </DialogHeader>
+                    <HomeContentForm onSuccess={handleEditSuccess} onCancel={() => setShowEditDialog(false)} />
+                  </DialogContent>
+                </Dialog>
+              </div>
               <p className="text-xl text-muted-foreground mb-6">
-                Full-Stack Developer & UI/UX Designer crafting digital experiences that make a difference
+                {homeContent?.tagline || 'Your professional tagline here'}
               </p>
               <div className="flex flex-wrap gap-4">
                 <Button asChild size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
@@ -141,7 +206,7 @@ export function Home() {
                 <div className="text-sm text-muted-foreground">Projects Completed</div>
               </div>
               <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm rounded-xl p-4 border border-white/40">
-                <div className="text-2xl font-bold text-green-600">4+</div>
+                <div className="text-2xl font-bold text-green-600">{homeContent?.yearsExperience || 0}+</div>
                 <div className="text-sm text-muted-foreground">Years Experience</div>
               </div>
             </motion.div>
@@ -156,7 +221,7 @@ export function Home() {
           >
             <div className="text-center">
               <img
-                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&crop=face"
+                src={homeContent?.profileImageUrl ? `http://localhost:3000${homeContent.profileImageUrl}` : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&crop=face"}
                 alt="Profile"
                 className="w-40 h-40 rounded-full mx-auto mb-6 border-4 border-white shadow-xl"
               />
@@ -166,7 +231,12 @@ export function Home() {
             <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm rounded-xl p-6 border border-white/40">
               <h3 className="text-lg font-semibold mb-4">Core Expertise</h3>
               <div className="grid grid-cols-2 gap-3">
-                {topSkills.map((skill) => (
+                {homeContent?.coreExpertise?.slice(0, 4).map((expertise, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                    <span className="text-sm font-medium">{expertise}</span>
+                  </div>
+                )) || topSkills.map((skill) => (
                   <div key={skill._id} className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${
                       skill.experienceLevel === 'expert' ? 'bg-green-500' : 'bg-blue-500'
@@ -193,7 +263,10 @@ export function Home() {
         transition={{ delay: 0.6, duration: 0.6 }}
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
       >
-        <Card className="group hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800">
+        <Card
+          className="group hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800 cursor-pointer"
+          onClick={handleCompletedProjectsClick}
+        >
           <CardHeader className="text-center">
             <Code className="h-8 w-8 mx-auto text-green-600 group-hover:scale-110 transition-transform" />
             <CardTitle className="text-green-700 dark:text-green-300">{completedProjects}</CardTitle>
@@ -201,7 +274,10 @@ export function Home() {
           </CardHeader>
         </Card>
 
-        <Card className="group hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border-blue-200 dark:border-blue-800">
+        <Card
+          className="group hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border-blue-200 dark:border-blue-800 cursor-pointer"
+          onClick={handleActiveProjectsClick}
+        >
           <CardHeader className="text-center">
             <Activity className="h-8 w-8 mx-auto text-blue-600 group-hover:scale-110 transition-transform" />
             <CardTitle className="text-blue-700 dark:text-blue-300">{inProgressProjects}</CardTitle>
@@ -220,7 +296,10 @@ export function Home() {
           </CardHeader>
         </Card>
 
-        <Card className="group hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 border-orange-200 dark:border-orange-800">
+        <Card
+          className="group hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 border-orange-200 dark:border-orange-800 cursor-pointer"
+          onClick={handleBlogArticlesClick}
+        >
           <CardHeader className="text-center">
             <BookOpen className="h-8 w-8 mx-auto text-orange-600 group-hover:scale-110 transition-transform" />
             <CardTitle className="text-orange-700 dark:text-orange-300">{blogPosts.length * 10}+</CardTitle>
@@ -240,7 +319,7 @@ export function Home() {
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold mb-4">Interdisciplinary Collaboration</h2>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            Bridging disciplines through collaborative partnerships with academic institutions, industry researchers, and innovative teams
+            {homeContent?.bio || 'Bridging disciplines through collaborative partnerships with academic institutions, industry researchers, and innovative teams'}
           </p>
         </div>
 
@@ -253,7 +332,7 @@ export function Home() {
             <CardHeader className="pb-2">
               <GraduationCap className="h-8 w-8 mx-auto text-blue-600 mb-2" />
               <CardTitle className="text-2xl text-blue-700 dark:text-blue-300">
-                {mockCollaboratorStats.academia?.total || 0}
+                {homeContent?.collaboratorStats?.academia?.total || 0}
               </CardTitle>
               <CardDescription className="text-xs">Academia</CardDescription>
               <motion.div
@@ -265,9 +344,9 @@ export function Home() {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                {hoveredCollabCard === 'academia' && mockCollaboratorStats.academia && (
+                {hoveredCollabCard === 'academia' && homeContent?.collaboratorStats?.academia && (
                   <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                    {Object.entries(mockCollaboratorStats.academia.subcategories).map(([type, count]) => (
+                    {Object.entries(homeContent.collaboratorStats.academia.subcategories).map(([type, count]) => (
                       <div key={type} className="flex justify-between">
                         <span>{formatSubcategoryName(type)}:</span>
                         <span>{count}</span>
@@ -287,7 +366,7 @@ export function Home() {
             <CardHeader className="pb-2">
               <BriefcaseIcon className="h-8 w-8 mx-auto text-green-600 mb-2" />
               <CardTitle className="text-2xl text-green-700 dark:text-green-300">
-                {mockCollaboratorStats.industry?.total || 0}
+                {homeContent?.collaboratorStats?.industry?.total || 0}
               </CardTitle>
               <CardDescription className="text-xs">Industry</CardDescription>
               <motion.div
@@ -299,9 +378,9 @@ export function Home() {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                {hoveredCollabCard === 'industry' && mockCollaboratorStats.industry && (
+                {hoveredCollabCard === 'industry' && homeContent?.collaboratorStats?.industry && (
                   <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                    {Object.entries(mockCollaboratorStats.industry.subcategories).map(([type, count]) => (
+                    {Object.entries(homeContent.collaboratorStats.industry.subcategories).map(([type, count]) => (
                       <div key={type} className="flex justify-between">
                         <span>{formatSubcategoryName(type)}:</span>
                         <span>{count}</span>
@@ -321,7 +400,7 @@ export function Home() {
             <CardHeader className="pb-2">
               <Users className="h-8 w-8 mx-auto text-purple-600 mb-2" />
               <CardTitle className="text-2xl text-purple-700 dark:text-purple-300">
-                {mockCollaboratorStats.students?.total || 0}
+                {homeContent?.collaboratorStats?.students?.total || 0}
               </CardTitle>
               <CardDescription className="text-xs">Students</CardDescription>
               <motion.div
@@ -333,9 +412,9 @@ export function Home() {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                {hoveredCollabCard === 'students' && mockCollaboratorStats.students && (
+                {hoveredCollabCard === 'students' && homeContent?.collaboratorStats?.students && (
                   <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                    {Object.entries(mockCollaboratorStats.students.subcategories).map(([type, count]) => (
+                    {Object.entries(homeContent.collaboratorStats.students.subcategories).map(([type, count]) => (
                       <div key={type} className="flex justify-between">
                         <span>{formatSubcategoryName(type)}:</span>
                         <span>{count}</span>
@@ -355,7 +434,7 @@ export function Home() {
             <CardHeader className="pb-2">
               <Newspaper className="h-8 w-8 mx-auto text-orange-600 mb-2" />
               <CardTitle className="text-2xl text-orange-700 dark:text-orange-300">
-                {mockCollaboratorStats.others?.total || 0}
+                {homeContent?.collaboratorStats?.others?.total || 0}
               </CardTitle>
               <CardDescription className="text-xs">Others</CardDescription>
               <motion.div
@@ -367,9 +446,9 @@ export function Home() {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                {hoveredCollabCard === 'others' && mockCollaboratorStats.others && (
+                {hoveredCollabCard === 'others' && homeContent?.collaboratorStats?.others && (
                   <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                    {Object.entries(mockCollaboratorStats.others.subcategories).map(([type, count]) => (
+                    {Object.entries(homeContent.collaboratorStats.others.subcategories).map(([type, count]) => (
                       <div key={type} className="flex justify-between">
                         <span>{formatSubcategoryName(type)}:</span>
                         <span>{count}</span>
@@ -406,7 +485,7 @@ export function Home() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project, index) => (
+          {projects.slice(0, 3).map((project, index) => (
             <motion.div
               key={project._id}
               initial={{ opacity: 0, y: 20 }}

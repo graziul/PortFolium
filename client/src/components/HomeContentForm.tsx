@@ -59,15 +59,39 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
 
   const loadData = async () => {
     try {
+      console.log('HomeContentForm: Loading home content and collaborators...');
+      
       const [homeContentResponse, collaboratorsResponse] = await Promise.all([
-        getHomeContent(),
-        getCollaborators()
+        getHomeContent().catch(error => {
+          console.log('HomeContentForm: Home content not found, using defaults');
+          return {
+            homeContent: {
+              name: '',
+              tagline: '',
+              bio: '',
+              profileImageUrl: '',
+              yearsExperience: 0,
+              coreExpertise: [],
+              socialLinks: {
+                linkedin: '',
+                github: '',
+                twitter: '',
+                website: ''
+              }
+            }
+          };
+        }),
+        getCollaborators().catch(error => {
+          console.log('HomeContentForm: Collaborators not found, using empty array');
+          return { collaborators: [] };
+        })
       ]);
 
       setFormData(homeContentResponse.homeContent);
       setCollaborators(collaboratorsResponse.collaborators);
+      console.log('HomeContentForm: Data loaded successfully');
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('HomeContentForm: Error loading data:', error);
       toast({
         title: 'Error',
         description: 'Failed to load data.',
@@ -101,6 +125,7 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
         coreExpertise: [...(prev.coreExpertise || []), newExpertise.trim()]
       }));
       setNewExpertise('');
+      console.log('HomeContentForm: Added expertise:', newExpertise.trim());
     }
   };
 
@@ -109,17 +134,21 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
       ...prev,
       coreExpertise: prev.coreExpertise?.filter(expertise => expertise !== expertiseToRemove) || []
     }));
+    console.log('HomeContentForm: Removed expertise:', expertiseToRemove);
   };
 
   const addCollaborator = () => {
     if (newCollaborator.name.trim() && newCollaborator.type) {
       setCollaborators(prev => [...prev, { ...newCollaborator }]);
       setNewCollaborator({ name: '', type: 'postdoc' });
+      console.log('HomeContentForm: Added collaborator:', newCollaborator);
     }
   };
 
   const removeCollaborator = (index: number) => {
+    const removedCollaborator = collaborators[index];
     setCollaborators(prev => prev.filter((_, i) => i !== index));
+    console.log('HomeContentForm: Removed collaborator:', removedCollaborator);
   };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,17 +157,19 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
 
     setUploading(true);
     try {
+      console.log('HomeContentForm: Uploading profile image...');
       const response = await uploadProfileImage(file);
       setFormData(prev => ({
         ...prev,
         profileImageUrl: response.imageUrl
       }));
+      console.log('HomeContentForm: Profile image uploaded successfully:', response.imageUrl);
       toast({
         title: 'Success',
         description: 'Profile image uploaded successfully.'
       });
     } catch (error) {
-      console.error('Error uploading image:', error);
+      console.error('HomeContentForm: Error uploading image:', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to upload image.',
@@ -164,17 +195,19 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
     setLoading(true);
 
     try {
+      console.log('HomeContentForm: Saving home content...');
       await updateHomeContent({
         ...formData,
         collaborators
       });
+      console.log('HomeContentForm: Home content saved successfully');
       toast({
         title: 'Success',
         description: 'Home content updated successfully.'
       });
       onSuccess?.();
     } catch (error) {
-      console.error('Error saving home content:', error);
+      console.error('HomeContentForm: Error saving home content:', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to save home content.',

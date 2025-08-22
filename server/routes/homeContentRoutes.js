@@ -38,7 +38,7 @@ const readCollaboratorsData = (userId) => {
     }
     return [];
   } catch (error) {
-    console.error('Error reading collaborators data:', error);
+    console.error('HomeContentRoutes: Error reading collaborators data:', error);
     return [];
   }
 };
@@ -52,13 +52,17 @@ const writeCollaboratorsData = (userId, collaborators) => {
     }
     allData[userId] = collaborators;
     fs.writeFileSync(collaboratorsDataPath, JSON.stringify(allData, null, 2));
+    console.log('HomeContentRoutes: Collaborators data written successfully for user:', userId);
   } catch (error) {
-    console.error('Error writing collaborators data:', error);
+    console.error('HomeContentRoutes: Error writing collaborators data:', error);
+    throw error;
   }
 };
 
 // Helper function to calculate collaborator stats
 const calculateCollaboratorStats = (collaborators) => {
+  console.log('HomeContentRoutes: Calculating collaborator stats for', collaborators.length, 'collaborators');
+  
   const stats = {
     academia: { total: 0, subcategories: { postdoc: 0, junior_faculty: 0, senior_faculty: 0 } },
     industry: { total: 0, subcategories: { industry_tech: 0, industry_finance: 0, industry_healthcare: 0 } },
@@ -67,6 +71,8 @@ const calculateCollaboratorStats = (collaborators) => {
   };
 
   collaborators.forEach(collab => {
+    console.log('HomeContentRoutes: Processing collaborator:', collab.name, 'type:', collab.type);
+    
     if (['postdoc', 'junior_faculty', 'senior_faculty'].includes(collab.type)) {
       stats.academia.total += 1;
       stats.academia.subcategories[collab.type] += 1;
@@ -82,6 +88,7 @@ const calculateCollaboratorStats = (collaborators) => {
     }
   });
 
+  console.log('HomeContentRoutes: Calculated stats:', stats);
   return stats;
 };
 
@@ -208,11 +215,11 @@ router.put('/', auth, async (req, res) => {
     if (req.body.collaborators) {
       console.log('HomeContentRoutes: Updating collaborators data');
       writeCollaboratorsData(req.user.id, req.body.collaborators);
-      
+
       // Calculate stats and add to home content
       const collaboratorStats = calculateCollaboratorStats(req.body.collaborators);
       req.body.collaboratorStats = collaboratorStats;
-      
+
       // Remove collaborators from the data to be saved in DB
       delete req.body.collaborators;
     }
