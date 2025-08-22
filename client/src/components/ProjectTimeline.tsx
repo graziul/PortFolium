@@ -6,10 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, MessageCircle, AlertTriangle, FileText, Calendar } from 'lucide-react';
+import { Plus, MessageCircle, AlertTriangle, FileText, Calendar, Lightbulb } from 'lucide-react';
 import { ProjectUpdate } from '@/api/projects';
 import { addProjectUpdate, getProjectUpdates } from '@/api/projects';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/useToast';
 
 interface ProjectTimelineProps {
   projectId: string;
@@ -17,16 +17,16 @@ interface ProjectTimelineProps {
 }
 
 interface UpdateFormData {
-  type: 'question' | 'blocker' | 'update';
+  type: 'question' | 'blocker' | 'update' | 'findings';
   content: string;
   blockerType?: 'Code' | 'Use Case' | 'Interest' | 'Funding' | 'Ethics';
   blockerDetails?: string;
 }
 
-export const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId, initialUpdates = [] }) => {
+export const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
   console.log('ProjectTimeline: Component mounting with projectId:', projectId);
 
-  const [updates, setUpdates] = useState<ProjectUpdate[]>(initialUpdates);
+  const [updates, setUpdates] = useState<ProjectUpdate[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -36,16 +36,12 @@ export const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId, ini
     blockerType: undefined,
     blockerDetails: ''
   });
+  const { toast } = useToast();
 
   useEffect(() => {
-    if (initialUpdates.length === 0) {
-      console.log('ProjectTimeline: No initial updates provided, fetching from API');
-      fetchUpdates();
-    } else {
-      console.log('ProjectTimeline: Using initial updates:', initialUpdates.length);
-      setUpdates(initialUpdates);
-    }
-  }, [projectId, initialUpdates]);
+    console.log('ProjectTimeline: useEffect triggered for projectId:', projectId);
+    fetchUpdates();
+  }, [projectId]);
 
   const fetchUpdates = async () => {
     console.log('ProjectTimeline: fetchUpdates called for projectId:', projectId);
@@ -53,7 +49,7 @@ export const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId, ini
       setLoading(true);
       const response = await getProjectUpdates(projectId);
       console.log('ProjectTimeline: Updates fetched:', response);
-      
+
       if (response.updates) {
         setUpdates(response.updates);
         console.log('ProjectTimeline: Updates set:', response.updates.length);
@@ -78,7 +74,7 @@ export const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId, ini
     }));
   };
 
-  const handleTypeChange = (type: 'question' | 'blocker' | 'update') => {
+  const handleTypeChange = (type: 'question' | 'blocker' | 'update' | 'findings') => {
     console.log('ProjectTimeline: Type change:', type);
     setFormData(prev => ({
       ...prev,
@@ -138,7 +134,7 @@ export const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId, ini
         });
         setShowAddForm(false);
         console.log('ProjectTimeline: Update added to timeline');
-        
+
         toast({
           title: "Success",
           description: "Update added successfully"
@@ -175,6 +171,8 @@ export const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId, ini
         return <AlertTriangle className="h-4 w-4" />;
       case 'update':
         return <FileText className="h-4 w-4" />;
+      case 'findings':
+        return <Lightbulb className="h-4 w-4" />;
       default:
         return <FileText className="h-4 w-4" />;
     }
@@ -183,13 +181,15 @@ export const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId, ini
   const getUpdateColor = (type: string) => {
     switch (type) {
       case 'question':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'blocker':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-red-50 text-red-700 border-red-200';
       case 'update':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-green-50 text-green-700 border-green-200';
+      case 'findings':
+        return 'bg-purple-50 text-purple-700 border-purple-200';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-50 text-gray-700 border-gray-200';
     }
   };
 
@@ -212,56 +212,58 @@ export const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId, ini
   console.log('ProjectTimeline: Rendering with', updates.length, 'updates, showAddForm:', showAddForm);
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Live Tracker
+              Project Timeline
             </CardTitle>
             <CardDescription>
-              Track questions, blockers, and updates for this project
+              Track questions, blockers, updates, and findings for this project
             </CardDescription>
           </div>
           <Button
             onClick={() => setShowAddForm(!showAddForm)}
             size="sm"
             variant={showAddForm ? "outline" : "default"}
+            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0"
           >
             <Plus className="h-4 w-4 mr-2" />
             {showAddForm ? 'Cancel' : 'Add Update'}
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         {/* Add Update Form */}
         {showAddForm && (
-          <Card className="border-dashed">
+          <Card className="border-dashed border-2 border-blue-200 bg-blue-50/30">
             <CardContent className="pt-6">
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Update Type</Label>
+                  <Label className="text-sm font-medium">Update Type</Label>
                   <Select value={formData.type} onValueChange={handleTypeChange}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white">
                       <SelectValue placeholder="Select update type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="question">Current Question</SelectItem>
                       <SelectItem value="blocker">Current Blocker</SelectItem>
                       <SelectItem value="update">Project Update</SelectItem>
+                      <SelectItem value="findings">Preliminary Findings</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {formData.type === 'blocker' && (
                   <div className="space-y-2">
-                    <Label>Blocker Type</Label>
-                    <Select 
-                      value={formData.blockerType} 
+                    <Label className="text-sm font-medium">Blocker Type</Label>
+                    <Select
+                      value={formData.blockerType}
                       onValueChange={(value) => handleInputChange('blockerType', value)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white">
                         <SelectValue placeholder="Select blocker type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -276,39 +278,52 @@ export const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId, ini
                 )}
 
                 <div className="space-y-2">
-                  <Label>Content</Label>
+                  <Label className="text-sm font-medium">Content</Label>
                   <Textarea
                     value={formData.content}
                     onChange={(e) => handleInputChange('content', e.target.value)}
                     placeholder={
-                      formData.type === 'question' 
+                      formData.type === 'question'
                         ? "What question are you currently trying to answer?"
                         : formData.type === 'blocker'
                         ? "Describe the blocker you're facing..."
+                        : formData.type === 'findings'
+                        ? "Share your preliminary findings or insights..."
                         : "Share an update about your project progress..."
                     }
                     rows={3}
                     required
+                    className="bg-white resize-none"
                   />
                 </div>
 
                 {formData.type === 'blocker' && (
                   <div className="space-y-2">
-                    <Label>Additional Details (Optional)</Label>
+                    <Label className="text-sm font-medium">Additional Details (Optional)</Label>
                     <Textarea
                       value={formData.blockerDetails}
                       onChange={(e) => handleInputChange('blockerDetails', e.target.value)}
                       placeholder="Any additional context or details about this blocker..."
                       rows={2}
+                      className="bg-white resize-none"
                     />
                   </div>
                 )}
 
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={submitting} className="flex-1">
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white border-0"
+                  >
                     {submitting ? 'Adding...' : 'Add Update'}
                   </Button>
-                  <Button type="button" variant="outline" onClick={handleCancel} className="flex-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCancel}
+                    className="flex-1 border-gray-300 hover:bg-gray-50"
+                  >
                     Cancel
                   </Button>
                 </div>
@@ -319,52 +334,64 @@ export const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId, ini
 
         {/* Timeline */}
         {loading ? (
-          <div className="flex justify-center items-center py-8">
-            <div className="text-muted-foreground">Loading updates...</div>
+          <div className="flex justify-center items-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
+              <div className="text-gray-600">Loading updates...</div>
+            </div>
           </div>
         ) : updates.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No updates yet. Click the "+" button to add your first update!</p>
+          <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border-2 border-dashed border-gray-200">
+            <Calendar className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No updates yet</h3>
+            <p className="text-gray-600 mb-4">Start tracking your project progress by adding your first update!</p>
+            <Button
+              onClick={() => setShowAddForm(true)}
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Your First Update
+            </Button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {updates.map((update, index) => (
               <div key={update._id} className="flex gap-4">
                 <div className="flex flex-col items-center">
-                  <div className={`p-2 rounded-full border-2 ${getUpdateColor(update.type)}`}>
+                  <div className={`p-3 rounded-full border-2 shadow-sm ${getUpdateColor(update.type)} transition-all hover:scale-105`}>
                     {getUpdateIcon(update.type)}
                   </div>
                   {index < updates.length - 1 && (
-                    <div className="w-px h-16 bg-border mt-2" />
+                    <div className="w-0.5 h-20 bg-gradient-to-b from-gray-300 to-gray-200 mt-3 rounded-full" />
                   )}
                 </div>
-                <div className="flex-1 pb-8">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="outline" className={getUpdateColor(update.type)}>
+                <div className="flex-1 pb-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Badge variant="outline" className={`${getUpdateColor(update.type)} font-medium px-3 py-1`}>
                       {update.type === 'question' && 'Question'}
                       {update.type === 'blocker' && 'Blocker'}
                       {update.type === 'update' && 'Update'}
+                      {update.type === 'findings' && 'Findings'}
                     </Badge>
                     {update.type === 'blocker' && update.blockerType && (
-                      <Badge variant="secondary">
+                      <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-orange-200">
                         {update.blockerType}
                       </Badge>
                     )}
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-gray-500 font-medium">
                       {formatDate(update.createdAt)}
                     </span>
                   </div>
-                  <div className="prose prose-sm max-w-none">
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                  <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+                    <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
                       {update.content}
                     </p>
                     {update.type === 'blocker' && update.blockerDetails && (
-                      <div className="mt-2 p-3 bg-muted rounded-lg">
-                        <p className="text-xs font-medium text-muted-foreground mb-1">
+                      <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-lg">
+                        <p className="text-xs font-semibold text-red-700 mb-1 uppercase tracking-wide">
                           Additional Details:
                         </p>
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                        <p className="text-sm text-red-800 leading-relaxed whitespace-pre-wrap">
                           {update.blockerDetails}
                         </p>
                       </div>

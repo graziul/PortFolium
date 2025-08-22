@@ -23,7 +23,8 @@ import {
   CheckCircle,
   PauseCircle,
   Users,
-  DollarSign
+  DollarSign,
+  BookOpen
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -34,7 +35,7 @@ import {
 import { getProjects, updateProject, deleteProject, Project } from '../api/projects';
 import { useToast } from '../hooks/useToast';
 
-// Main workflow columns (excluding on-hold)
+// Main workflow columns (excluding on-hold) - Updated with proper icons and ideation
 const mainStatusColumns = {
   ideation: {
     title: 'Ideation',
@@ -45,7 +46,7 @@ const mainStatusColumns = {
   researching: {
     title: 'Researching',
     color: 'bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200',
-    icon: Search,
+    icon: BookOpen,
     iconColor: 'text-orange-600'
   },
   planning: {
@@ -78,12 +79,12 @@ const onHoldColumn = {
   }
 };
 
-// Enthusiasm indicators with cleaner visual design
-const enthusiasmIndicators = {
-  'Low': { emoji: '😴', title: 'Low enthusiasm', color: 'bg-gray-100 text-gray-600' },
-  'Medium': { emoji: '😊', title: 'Medium enthusiasm', color: 'bg-blue-100 text-blue-600' },
-  'High': { emoji: '🤩', title: 'High enthusiasm', color: 'bg-orange-100 text-orange-600' },
-  'Very High': { emoji: '🚀', title: 'Very high enthusiasm', color: 'bg-red-100 text-red-600' }
+// Energy indicators with emojis (renamed from enthusiasm)
+const energyIndicators = {
+  'Low': { emoji: '😴', title: 'Low energy', color: 'bg-gray-100 text-gray-600' },
+  'Medium': { emoji: '😊', title: 'Medium energy', color: 'bg-blue-100 text-blue-600' },
+  'High': { emoji: '🤩', title: 'High energy', color: 'bg-orange-100 text-orange-600' },
+  'Very High': { emoji: '🚀', title: 'Very high energy', color: 'bg-red-100 text-red-600' }
 };
 
 export function ProjectTracker() {
@@ -117,7 +118,7 @@ export function ProjectTracker() {
       console.error('ProjectTracker: Error fetching projects:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch projects. Please try again.",
+        description: error.message || "Failed to fetch projects. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -157,7 +158,7 @@ export function ProjectTracker() {
       fetchProjects();
       toast({
         title: "Error",
-        description: "Failed to update project status. Please try again.",
+        description: error.message || "Failed to update project status. Please try again.",
         variant: "destructive",
       });
     }
@@ -187,7 +188,7 @@ export function ProjectTracker() {
       console.error('ProjectTracker: Error deleting project:', error);
       toast({
         title: "Error",
-        description: "Failed to delete project. Please try again.",
+        description: error.message || "Failed to delete project. Please try again.",
         variant: "destructive",
       });
     }
@@ -209,7 +210,7 @@ export function ProjectTracker() {
       console.error('ProjectTracker: Error archiving project:', error);
       toast({
         title: "Error",
-        description: "Failed to archive project. Please try again.",
+        description: error.message || "Failed to archive project. Please try again.",
         variant: "destructive",
       });
     }
@@ -231,7 +232,7 @@ export function ProjectTracker() {
       console.error('ProjectTracker: Error restoring project:', error);
       toast({
         title: "Error",
-        description: "Failed to restore project. Please try again.",
+        description: error.message || "Failed to restore project. Please try again.",
         variant: "destructive",
       });
     }
@@ -241,8 +242,20 @@ export function ProjectTracker() {
     return projects.filter(project => project.status === status);
   }, [projects]);
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    console.log('ProjectTracker: Image failed to load, hiding image element');
+    e.currentTarget.style.display = 'none';
+  };
+
+  // Fix image URL to use backend server
+  const getImageUrl = (url: string | undefined) => {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    return `http://localhost:3000${url}`;
+  };
+
   const ProjectCard = React.memo(({ project, index, isHorizontal = false }: { project: Project; index: number; isHorizontal?: boolean }) => {
-    const enthusiasmConfig = project.enthusiasmLevel ? enthusiasmIndicators[project.enthusiasmLevel] : null;
+    const energyConfig = project.enthusiasmLevel ? energyIndicators[project.enthusiasmLevel] : null;
 
     return (
       <Draggable draggableId={project._id} index={index}>
@@ -257,6 +270,25 @@ export function ProjectTracker() {
               className="cursor-pointer hover:shadow-lg transition-all duration-200 bg-white border border-gray-200 hover:border-gray-300"
               onClick={() => handleView(project._id)}
             >
+              {/* Thumbnail Image Section with Error Handling */}
+              {(project.thumbnailUrl || project.imageUrl) && (
+                <div className="aspect-video overflow-hidden relative">
+                  <img
+                    src={getImageUrl(project.thumbnailUrl || project.imageUrl)}
+                    alt={project.title}
+                    className="w-full h-full object-cover"
+                    style={{
+                      height: '120px',
+                      objectFit: 'cover'
+                    }}
+                    onError={handleImageError}
+                    onLoad={() => {
+                      console.log('ProjectTracker: Image loaded successfully:', getImageUrl(project.thumbnailUrl || project.imageUrl));
+                    }}
+                  />
+                </div>
+              )}
+
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
                   <div className="flex-1 min-w-0 pr-2">
@@ -312,27 +344,29 @@ export function ProjectTracker() {
                   </DropdownMenu>
                 </div>
 
-                {/* Enthusiasm Level */}
-                {enthusiasmConfig && (
+                {/* Energy Level - Updated to match ProjectCard component */}
+                {energyConfig && (
                   <div className="flex items-center gap-2 mb-2">
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${enthusiasmConfig.color} flex items-center gap-1`}>
-                      <span>{enthusiasmConfig.emoji}</span>
-                      <span>My enthusiasm</span>
-                    </div>
+                    <span className="text-lg" title={energyConfig.title}>
+                      {energyConfig.emoji}
+                    </span>
+                    <Badge variant="outline" className="text-xs">
+                      Energy: {project.enthusiasmLevel}
+                    </Badge>
                   </div>
                 )}
 
                 {/* Collaboration Indicators */}
                 <div className="flex gap-1 flex-wrap">
                   {project.openToCollaborators && (
-                    <Badge variant="secondary" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                      <Users className="h-3 w-3 mr-1" />
+                    <Badge variant="secondary" className="text-xs bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
+                      <Users className="h-3 w-3" />
                       Open to Collaborators
                     </Badge>
                   )}
                   {project.acceptingSponsors && (
-                    <Badge variant="secondary" className="text-xs bg-green-50 text-green-700 border-green-200">
-                      <DollarSign className="h-3 w-3 mr-1" />
+                    <Badge variant="secondary" className="text-xs bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
+                      <DollarSign className="h-3 w-3" />
                       Accepting Sponsors
                     </Badge>
                   )}
@@ -341,7 +375,7 @@ export function ProjectTracker() {
 
               <CardContent className="pt-0 space-y-2">
                 <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
-                  {project.description}
+                  {project.shortDescription || project.description}
                 </p>
 
                 {project.technologies && project.technologies.length > 0 && (
@@ -631,7 +665,11 @@ export function ProjectTracker() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {archivedProjects.map((project) => (
-              <Card key={project._id} className="opacity-75 hover:opacity-100 transition-opacity bg-white border">
+              <Card 
+                key={project._id} 
+                className="opacity-75 hover:opacity-100 transition-opacity bg-white border cursor-pointer"
+                onClick={() => handleView(project._id)}
+              >
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-sm font-semibold text-gray-900 flex-1">
@@ -639,21 +677,35 @@ export function ProjectTracker() {
                     </CardTitle>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 w-6 p-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <MoreVertical className="h-3 w-3" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleView(project._id)}>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          handleView(project._id);
+                        }}>
                           <Eye className="h-3 w-3 mr-2" />
                           View
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleRestore(project._id)}>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          handleRestore(project._id);
+                        }}>
                           <ArchiveRestore className="h-3 w-3 mr-2" />
                           Restore
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => handleDelete(project._id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(project._id);
+                          }}
                           className="text-red-600"
                         >
                           <Trash2 className="h-3 w-3 mr-2" />

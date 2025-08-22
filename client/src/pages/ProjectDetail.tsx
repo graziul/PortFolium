@@ -22,9 +22,19 @@ import {
   BookOpen,
   Rocket,
   Terminal,
-  GraduationCap
+  GraduationCap,
+  DollarSign
 } from 'lucide-react';
 import { getProject, Project } from '../api/projects';
+import { ProjectTimeline } from '../components/ProjectTimeline';
+
+// Enthusiasm level emoji mapping - Match ProjectCard
+const enthusiasmEmojis = {
+  'Low': '😴',
+  'Medium': '😊',
+  'High': '🤩',
+  'Very High': '🚀'
+};
 
 export function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -70,6 +80,10 @@ export function ProjectDetail() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'ideation':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'researching':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'completed':
         return 'bg-green-100 text-green-800 border-green-200';
       case 'in-progress':
@@ -81,6 +95,12 @@ export function ProjectDetail() {
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
+  };
+
+  const formatStatus = (status: string) => {
+    return status.split('-').map(word =>
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
   };
 
   const formatDate = (dateString: string) => {
@@ -170,33 +190,10 @@ export function ProjectDetail() {
                   onLoad={(e) => {
                     const imgElement = e.currentTarget;
                     console.log('ProjectDetail: Image loaded successfully:', imgElement.src);
-                    console.log('ProjectDetail: Image natural dimensions:', imgElement.naturalWidth, 'x', imgElement.naturalHeight);
-                    console.log('ProjectDetail: Image display dimensions:', imgElement.width, 'x', imgElement.height);
-                    console.log('ProjectDetail: Image complete:', imgElement.complete);
                   }}
                   onError={(e) => {
                     const imgElement = e.currentTarget;
                     console.error('ProjectDetail: Image failed to load:', imgElement.src);
-                    console.error('ProjectDetail: Image error event:', e);
-                    console.error('ProjectDetail: Image complete:', imgElement.complete);
-                    console.error('ProjectDetail: Image natural dimensions:', imgElement.naturalWidth, 'x', imgElement.naturalHeight);
-
-                    // Try to fetch the image directly to see what's happening
-                    fetch(imgElement.src)
-                      .then(response => {
-                        console.error('ProjectDetail: Direct fetch response status:', response.status);
-                        console.error('ProjectDetail: Direct fetch response headers:', response.headers);
-                        return response.blob();
-                      })
-                      .then(blob => {
-                        console.error('ProjectDetail: Direct fetch blob size:', blob.size);
-                        console.error('ProjectDetail: Direct fetch blob type:', blob.type);
-                      })
-                      .catch(fetchError => {
-                        console.error('ProjectDetail: Direct fetch failed:', fetchError);
-                      });
-
-                    // Show error message or fallback
                     e.currentTarget.style.display = 'none';
                   }}
                 />
@@ -221,7 +218,7 @@ export function ProjectDetail() {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">Status:</span>
                 <Badge className={getStatusColor(project.status)}>
-                  {project.status.charAt(0).toUpperCase() + project.status.slice(1).replace('-', ' ')}
+                  {formatStatus(project.status)}
                 </Badge>
               </div>
 
@@ -232,14 +229,36 @@ export function ProjectDetail() {
                 </div>
               )}
 
+              {/* Enthusiasm Level - Updated to match ProjectCard */}
               {project.enthusiasmLevel && (
-                <div>
+                <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">Enthusiasm Level:</span>
-                  <Badge variant="outline" className="ml-2">
-                    {project.enthusiasmLevel}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">
+                      {enthusiasmEmojis[project.enthusiasmLevel]}
+                    </span>
+                    <Badge variant="outline">
+                      {project.enthusiasmLevel}
+                    </Badge>
+                  </div>
                 </div>
               )}
+
+              {/* Collaboration and Sponsor Status */}
+              <div className="flex gap-2 flex-wrap">
+                {project.openToCollaborators && (
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-800 flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    Open to Collaborators
+                  </Badge>
+                )}
+                {project.acceptingSponsors && (
+                  <Badge variant="secondary" className="bg-green-100 text-green-800 flex items-center gap-1">
+                    <DollarSign className="h-3 w-3" />
+                    Accepting Sponsors
+                  </Badge>
+                )}
+              </div>
 
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4">
                 {project.startDate && (
@@ -348,6 +367,9 @@ export function ProjectDetail() {
             </CardContent>
           </Card>
 
+          {/* Project Updates Timeline */}
+          <ProjectTimeline projectId={project._id} />
+
           {/* Media Coverage Section */}
           {project.mediaCoverage && project.mediaCoverage.length > 0 && (
             <Card>
@@ -368,12 +390,12 @@ export function ProjectDetail() {
                           <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                             <span className="flex items-center gap-1">
                               <Building2 className="w-3 h-3" />
-                              {coverage.source}
+                              {coverage.publication}
                             </span>
-                            {coverage.date && (
+                            {coverage.publishedDate && (
                               <span className="flex items-center gap-1">
                                 <Calendar className="w-3 h-3" />
-                                {formatDate(coverage.date)}
+                                {formatDate(coverage.publishedDate)}
                               </span>
                             )}
                           </div>
@@ -451,7 +473,7 @@ export function ProjectDetail() {
             <Card className="border-blue-200 bg-blue-50">
               <CardHeader>
                 <CardTitle className="text-blue-800 flex items-center gap-2">
-                  <Building2 className="w-5 h-5" />
+                  <DollarSign className="w-5 h-5" />
                   Accepting Sponsors
                 </CardTitle>
               </CardHeader>
@@ -479,7 +501,7 @@ export function ProjectDetail() {
                       <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
                         <Users className="w-4 h-4 text-gray-600" />
                       </div>
-                      <span className="text-sm">{collaborator}</span>
+                      <span className="text-sm">{collaborator.name || collaborator}</span>
                     </div>
                   ))}
                 </div>

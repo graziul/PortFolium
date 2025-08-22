@@ -1,154 +1,144 @@
 import api from './api';
 
-console.log('BlogAPI: Module loading...');
+export interface BlogPost {
+  _id: string;
+  title: string;
+  content: string;
+  excerpt: string;
+  featuredImage?: string;
+  tags: string[];
+  published: boolean;
+  publishedAt?: string;
+  readTime: number;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
-// Description: Get all blog posts for the authenticated user
-// Endpoint: GET /api/blog-posts
+export interface BlogAPI {
+  getBlogPosts: () => Promise<{ posts: BlogPost[] }>;
+  getBlogPost: (id: string) => Promise<{ post: BlogPost }>;
+  createBlogPost: (postData: Partial<BlogPost>) => Promise<{ post: BlogPost; message: string }>;
+  updateBlogPost: (id: string, postData: Partial<BlogPost>) => Promise<{ post: BlogPost; message: string }>;
+  deleteBlogPost: (id: string) => Promise<{ message: string }>;
+  uploadBlogImage: (file: File) => Promise<{ imageUrl: string }>;
+}
+
+// Description: Get all blog posts
+// Endpoint: GET /api/blog
 // Request: {}
-// Response: { posts: BlogPost[] }
+// Response: { posts: Array<BlogPost> }
 export const getBlogPosts = async () => {
   console.log('BlogAPI: getBlogPosts called');
-  console.log('BlogAPI: accessToken exists:', !!localStorage.getItem('accessToken'));
-  console.log('BlogAPI: refreshToken exists:', !!localStorage.getItem('refreshToken'));
   
   try {
-    console.log('BlogAPI: Making GET request to /api/blog-posts');
-    const response = await api.get('/api/blog-posts');
-    console.log('BlogAPI: getBlogPosts response received:', response.data);
+    const response = await api.get('/api/blog');
+    console.log('BlogAPI: Blog posts fetched successfully:', response.data.posts.length);
     return response.data;
   } catch (error) {
-    console.error('BlogAPI: getBlogPosts error:', error);
-    console.error('BlogAPI: Error response status:', error.response?.status);
-    console.error('BlogAPI: Error response data:', error.response?.data);
-    console.error('BlogAPI: Error message:', error.message);
+    console.error('BlogAPI: Error fetching blog posts:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
 
 // Description: Get a single blog post by ID
-// Endpoint: GET /api/blog-posts/:id
-// Request: {}
+// Endpoint: GET /api/blog/:id
+// Request: { id: string }
 // Response: { post: BlogPost }
 export const getBlogPost = async (id: string) => {
-  console.log('BlogAPI: getBlogPost called with ID:', id);
+  console.log('BlogAPI: getBlogPost called with id:', id);
   
   try {
-    console.log('BlogAPI: Making GET request to /api/blog-posts/' + id);
-    const response = await api.get(`/api/blog-posts/${id}`);
-    console.log('BlogAPI: getBlogPost response received:', response.data);
+    const response = await api.get(`/api/blog/${id}`);
+    console.log('BlogAPI: Blog post fetched successfully');
     return response.data;
   } catch (error) {
-    console.error('BlogAPI: getBlogPost error:', error);
-    console.error('BlogAPI: Error response status:', error.response?.status);
-    console.error('BlogAPI: Error response data:', error.response?.data);
-    console.error('BlogAPI: Error message:', error.message);
+    console.error('BlogAPI: Error fetching blog post:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
 
 // Description: Create a new blog post
-// Endpoint: POST /api/blog-posts
-// Request: { title: string, content: string, excerpt?: string, tags?: string[], featuredImage?: string }
+// Endpoint: POST /api/blog
+// Request: { title: string, content: string, excerpt?: string, featuredImage?: string, tags?: string[], published?: boolean }
 // Response: { post: BlogPost, message: string }
-export const createBlogPost = async (postData: {
-  title: string;
-  content: string;
-  excerpt?: string;
-  tags?: string[];
-  featuredImage?: string;
-}) => {
+export const createBlogPost = async (postData: Partial<BlogPost>) => {
   console.log('BlogAPI: createBlogPost called with data:', postData);
   
   try {
-    console.log('BlogAPI: Making POST request to /api/blog-posts');
-    const response = await api.post('/api/blog-posts', postData);
-    console.log('BlogAPI: createBlogPost response received:', response.data);
+    const response = await api.post('/api/blog', postData);
+    console.log('BlogAPI: Blog post created successfully');
     return response.data;
   } catch (error) {
-    console.error('BlogAPI: createBlogPost error:', error);
-    console.error('BlogAPI: Error response status:', error.response?.status);
-    console.error('BlogAPI: Error response data:', error.response?.data);
-    console.error('BlogAPI: Error message:', error.message);
+    console.error('BlogAPI: Error creating blog post:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
 
-// Description: Update an existing blog post
-// Endpoint: PUT /api/blog-posts/:id
-// Request: { title?: string, content?: string, excerpt?: string, tags?: string[], featuredImage?: string }
+// Description: Update a blog post
+// Endpoint: PUT /api/blog/:id
+// Request: { id: string, updates: Partial<BlogPost> }
 // Response: { post: BlogPost, message: string }
-export const updateBlogPost = async (id: string, postData: {
-  title?: string;
-  content?: string;
-  excerpt?: string;
-  tags?: string[];
-  featuredImage?: string;
-}) => {
-  console.log('BlogAPI: updateBlogPost called with ID:', id, 'and data:', postData);
+export const updateBlogPost = async (id: string, updates: Partial<BlogPost>) => {
+  console.log('BlogAPI: updateBlogPost called with id:', id, 'updates:', updates);
   
   try {
-    console.log('BlogAPI: Making PUT request to /api/blog-posts/' + id);
-    const response = await api.put(`/api/blog-posts/${id}`, postData);
-    console.log('BlogAPI: updateBlogPost response received:', response.data);
+    const response = await api.put(`/api/blog/${id}`, updates);
+    console.log('BlogAPI: Blog post updated successfully');
     return response.data;
   } catch (error) {
-    console.error('BlogAPI: updateBlogPost error:', error);
-    console.error('BlogAPI: Error response status:', error.response?.status);
-    console.error('BlogAPI: Error response data:', error.response?.data);
-    console.error('BlogAPI: Error message:', error.message);
+    console.error('BlogAPI: Error updating blog post:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
 
 // Description: Delete a blog post
-// Endpoint: DELETE /api/blog-posts/:id
-// Request: {}
+// Endpoint: DELETE /api/blog/:id
+// Request: { id: string }
 // Response: { message: string }
 export const deleteBlogPost = async (id: string) => {
-  console.log('BlogAPI: deleteBlogPost called with ID:', id);
+  console.log('BlogAPI: deleteBlogPost called with id:', id);
   
   try {
-    console.log('BlogAPI: Making DELETE request to /api/blog-posts/' + id);
-    const response = await api.delete(`/api/blog-posts/${id}`);
-    console.log('BlogAPI: deleteBlogPost response received:', response.data);
+    const response = await api.delete(`/api/blog/${id}`);
+    console.log('BlogAPI: Blog post deleted successfully');
     return response.data;
   } catch (error) {
-    console.error('BlogAPI: deleteBlogPost error:', error);
-    console.error('BlogAPI: Error response status:', error.response?.status);
-    console.error('BlogAPI: Error response data:', error.response?.data);
-    console.error('BlogAPI: Error message:', error.message);
+    console.error('BlogAPI: Error deleting blog post:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
 
-// Description: Upload blog image
-// Endpoint: POST /api/blog-posts/upload-image
-// Request: FormData with 'image' file
+// Description: Upload an image for blog post
+// Endpoint: POST /api/blog/upload
+// Request: FormData with 'image' field
 // Response: { imageUrl: string }
 export const uploadBlogImage = async (file: File) => {
   console.log('BlogAPI: uploadBlogImage called with file:', file.name);
   
   try {
-    console.log('BlogAPI: Creating FormData for image upload');
     const formData = new FormData();
     formData.append('image', file);
     
-    console.log('BlogAPI: Making POST request to /api/blog-posts/upload-image');
-    const response = await api.post('/api/blog-posts/upload-image', formData, {
+    const response = await api.post('/api/blog/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
     
-    console.log('BlogAPI: uploadBlogImage response received:', response.data);
+    console.log('BlogAPI: Image uploaded successfully');
     return response.data;
   } catch (error) {
-    console.error('BlogAPI: uploadBlogImage error:', error);
-    console.error('BlogAPI: Error response status:', error.response?.status);
-    console.error('BlogAPI: Error response data:', error.response?.data);
-    console.error('BlogAPI: Error message:', error.message);
+    console.error('BlogAPI: Error uploading image:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
 
-console.log('BlogAPI: Module loaded successfully');
+export const blogAPI: BlogAPI = {
+  getBlogPosts,
+  getBlogPost,
+  createBlogPost,
+  updateBlogPost,
+  deleteBlogPost,
+  uploadBlogImage,
+};

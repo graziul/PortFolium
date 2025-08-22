@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { getProjects, deleteProject, Project } from '@/api/projects';
 import { useToast } from '@/hooks/useToast';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Fuse from 'fuse.js';
 
 export function Projects() {
@@ -21,6 +21,7 @@ export function Projects() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [deletingProject, setDeletingProject] = useState<string | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const fuse = new Fuse(projects, {
     keys: ['title', 'description', 'technologies'],
@@ -111,12 +112,24 @@ export function Projects() {
     }
   };
 
+  const handleProjectClick = (projectId: string) => {
+    console.log('Projects: Navigating to project details:', projectId);
+    navigate(`/projects/${projectId}`);
+  };
+
   const categories = [...new Set(projects.map(p => p.category))];
 
   const impactColors = {
     'transformative': 'border-l-red-500',
     'innovative': 'border-l-yellow-500',
     'foundational': 'border-l-green-500',
+  };
+
+  // Fix image URL to use backend server
+  const getImageUrl = (url: string | undefined) => {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    return `http://localhost:3000${url}`;
   };
 
   if (loading) {
@@ -169,12 +182,12 @@ export function Projects() {
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="in-progress">In Progress</SelectItem>
-              <SelectItem value="researching">Researching</SelectItem>
-              <SelectItem value="planning">Planning</SelectItem>
-              <SelectItem value="on-hold">On Hold</SelectItem>
+              <SelectItem key="status-all" value="all">All Status</SelectItem>
+              <SelectItem key="status-completed" value="completed">Completed</SelectItem>
+              <SelectItem key="status-in-progress" value="in-progress">In Progress</SelectItem>
+              <SelectItem key="status-researching" value="researching">Researching</SelectItem>
+              <SelectItem key="status-planning" value="planning">Planning</SelectItem>
+              <SelectItem key="status-on-hold" value="on-hold">On Hold</SelectItem>
             </SelectContent>
           </Select>
 
@@ -183,9 +196,9 @@ export function Projects() {
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
+              <SelectItem key="category-all" value="all">All Categories</SelectItem>
               {categories.map((category) => (
-                <SelectItem key={category} value={category}>
+                <SelectItem key={`category-${category}`} value={category}>
                   {category}
                 </SelectItem>
               ))}
@@ -221,10 +234,13 @@ export function Projects() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 + index * 0.05, duration: 0.6 }}
           >
-            <Card className={`group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-white/20 h-full border-l-4 ${impactColors[project.impact || 'foundational']}`}>
+            <Card 
+              className={`group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-white/20 h-full border-l-4 ${impactColors[project.impact || 'foundational']} cursor-pointer`}
+              onClick={() => handleProjectClick(project._id)}
+            >
               <div className="aspect-video overflow-hidden relative">
                 <img
-                  src={project.thumbnailUrl || project.thumbnail}
+                  src={getImageUrl(project.thumbnailUrl) || "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=800&h=600&fit=crop"}
                   alt={project.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   style={{
@@ -235,31 +251,11 @@ export function Projects() {
                   onLoad={(e) => {
                     const imgElement = e.currentTarget;
                     console.log('Projects: Image loaded successfully:', imgElement.src);
-                    console.log('Projects: Image natural dimensions:', imgElement.naturalWidth, 'x', imgElement.naturalHeight);
-                    console.log('Projects: Image display dimensions:', imgElement.width, 'x', imgElement.height);
                   }}
                   onError={(e) => {
                     const imgElement = e.currentTarget;
                     console.error('Projects: Image failed to load:', imgElement.src);
-                    console.error('Projects: Image error event:', e);
-
-                    // Try to fetch the image directly
-                    fetch(imgElement.src)
-                      .then(response => {
-                        console.error('Projects: Direct fetch response status:', response.status);
-                        console.error('Projects: Direct fetch response headers:', response.headers);
-                        return response.blob();
-                      })
-                      .then(blob => {
-                        console.error('Projects: Direct fetch blob size:', blob.size);
-                        console.error('Projects: Direct fetch blob type:', blob.type);
-                      })
-                      .catch(fetchError => {
-                        console.error('Projects: Direct fetch failed:', fetchError);
-                      });
-
-                    // Set a fallback image or hide the image
-                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.src = "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=800&h=600&fit=crop";
                   }}
                 />
                 <div className="absolute top-4 right-4 flex gap-2">
@@ -282,14 +278,23 @@ export function Projects() {
 
                 {/* Action Buttons */}
                 <div className="absolute top-4 left-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button size="sm" variant="secondary" asChild>
-                    <Link to={`/projects/edit/${project._id}`}>
-                      <Edit className="h-3 w-3" />
-                    </Link>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/projects/edit/${project._id}`);
+                    }}
+                  >
+                    <Edit className="h-3 w-3" />
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button size="sm" variant="destructive">
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </AlertDialogTrigger>
@@ -318,11 +323,9 @@ export function Projects() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <Link to={`/projects/${project._id}`}>
-                      <CardTitle className="text-lg mb-2 hover:text-primary transition-colors cursor-pointer">
-                        {project.title}
-                      </CardTitle>
-                    </Link>
+                    <CardTitle className="text-lg mb-2 hover:text-primary transition-colors">
+                      {project.title}
+                    </CardTitle>
                     <CardDescription className="text-sm">{project.shortDescription || project.description}</CardDescription>
                   </div>
                 </div>
@@ -374,27 +377,45 @@ export function Projects() {
 
                 <div className="flex gap-2">
                   {(project.liveUrl || project.demoUrl) && (
-                    <Button size="sm" variant="outline" className="flex-1 hover:bg-blue-50 hover:border-blue-300 transition-colors group" asChild>
-                      <a href={project.liveUrl || project.demoUrl} target="_blank" rel="noopener noreferrer">
-                        <Rocket className="h-3 w-3 mr-2 text-blue-600 group-hover:scale-110 transition-transform" />
-                        <span className="text-blue-600 font-medium">Demo</span>
-                      </a>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 hover:bg-blue-50 hover:border-blue-300 transition-colors group"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(project.liveUrl || project.demoUrl, '_blank', 'noopener,noreferrer');
+                      }}
+                    >
+                      <Rocket className="h-3 w-3 mr-2 text-blue-600 group-hover:scale-110 transition-transform" />
+                      <span className="text-blue-600 font-medium">Demo</span>
                     </Button>
                   )}
                   {(project.githubUrl || project.codeUrl) && (
-                    <Button size="sm" variant="outline" className="flex-1 hover:bg-gray-50 hover:border-gray-400 transition-colors group" asChild>
-                      <a href={project.githubUrl || project.codeUrl} target="_blank" rel="noopener noreferrer">
-                        <Terminal className="h-3 w-3 mr-2 text-gray-700 group-hover:scale-110 transition-transform" />
-                        <span className="text-gray-700 font-medium">Code</span>
-                      </a>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 hover:bg-gray-50 hover:border-gray-400 transition-colors group"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(project.githubUrl || project.codeUrl, '_blank', 'noopener,noreferrer');
+                      }}
+                    >
+                      <Terminal className="h-3 w-3 mr-2 text-gray-700 group-hover:scale-110 transition-transform" />
+                      <span className="text-gray-700 font-medium">Code</span>
                     </Button>
                   )}
                   {project.paperUrl && (
-                    <Button size="sm" variant="outline" className="flex-1 hover:bg-purple-50 hover:border-purple-300 transition-colors group" asChild>
-                      <a href={project.paperUrl} target="_blank" rel="noopener noreferrer">
-                        <GraduationCap className="h-3 w-3 mr-2 text-purple-600 group-hover:scale-110 transition-transform" />
-                        <span className="text-purple-600 font-medium">Paper</span>
-                      </a>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 hover:bg-purple-50 hover:border-purple-300 transition-colors group"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(project.paperUrl, '_blank', 'noopener,noreferrer');
+                      }}
+                    >
+                      <GraduationCap className="h-3 w-3 mr-2 text-purple-600 group-hover:scale-110 transition-transform" />
+                      <span className="text-purple-600 font-medium">Paper</span>
                     </Button>
                   )}
                 </div>

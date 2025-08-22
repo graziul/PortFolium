@@ -11,8 +11,8 @@ interface ProjectCardProps {
   isDragging?: boolean;
 }
 
-// Enthusiasm level emoji mapping
-const enthusiasmEmojis = {
+// Energy level emoji mapping (renamed from enthusiasm)
+const energyEmojis = {
   'Low': '😴',
   'Medium': '😊',
   'High': '🤩',
@@ -58,9 +58,16 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
     ).join(' ');
   };
 
+  // Fix image URL to use backend server
+  const getImageUrl = (url: string | undefined) => {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    return `http://localhost:3000${url}`;
+  };
+
   return (
     <Card 
-      className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
+      className={`cursor-pointer transition-all duration-200 hover:shadow-lg border border-gray-200 hover:border-gray-300 ${
         isDragging ? 'opacity-50 rotate-2' : ''
       }`}
       onClick={handleCardClick}
@@ -69,65 +76,65 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
       {(project.thumbnailUrl || project.imageUrl) && (
         <div className="aspect-video overflow-hidden relative">
           <img
-            src={project.thumbnailUrl || project.imageUrl}
+            src={getImageUrl(project.thumbnailUrl || project.imageUrl)}
             alt={project.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             style={{ 
-              height: '180px',
+              height: '160px',
               objectFit: 'cover'
             }}
             onLoad={() => {
-              console.log('ProjectCard: Image loaded successfully:', project.thumbnailUrl || project.imageUrl);
+              console.log('ProjectCard: Image loaded successfully:', getImageUrl(project.thumbnailUrl || project.imageUrl));
             }}
             onError={(e) => {
-              console.error('ProjectCard: Image failed to load:', project.thumbnailUrl || project.imageUrl);
+              console.error('ProjectCard: Image failed to load:', getImageUrl(project.thumbnailUrl || project.imageUrl));
               e.currentTarget.style.display = 'none';
             }}
           />
         </div>
       )}
 
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2 px-3 pt-3">
         <div className="flex items-start justify-between">
-          <CardTitle className="text-lg font-semibold line-clamp-2">
+          <CardTitle className="text-base font-semibold line-clamp-2 flex-1 pr-2">
             {project.title}
           </CardTitle>
           <Badge 
             variant="outline" 
-            className={`ml-2 ${getStatusColor(project.status)}`}
+            className={`ml-2 text-xs ${getStatusColor(project.status)}`}
           >
             {formatStatus(project.status)}
           </Badge>
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-4">
-        <p className="text-sm text-gray-600 line-clamp-3">
+      <CardContent className="space-y-3 px-3 pb-3">
+        <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
           {project.shortDescription || project.description}
         </p>
 
-        {/* Enthusiasm Level with Emoji */}
+        {/* Energy Level with Emoji (renamed from enthusiasm) */}
         {project.enthusiasmLevel && (
           <div className="flex items-center gap-2">
-            <span className="text-lg">
-              {enthusiasmEmojis[project.enthusiasmLevel]}
+            <span className="text-base">
+              {energyEmojis[project.enthusiasmLevel]}
             </span>
             <Badge variant="outline" className="text-xs">
-              {project.enthusiasmLevel}
+              Energy: {project.enthusiasmLevel}
             </Badge>
           </div>
         )}
 
         {/* Collaboration and Sponsor Indicators */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-1 flex-wrap">
           {project.openToCollaborators && (
-            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 flex items-center gap-1">
+            <Badge variant="secondary" className="text-xs bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
               <Users className="h-3 w-3" />
               Open to Collaborators
             </Badge>
           )}
           {project.acceptingSponsors && (
-            <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 flex items-center gap-1">
+            <Badge variant="secondary" className="text-xs bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
               <DollarSign className="h-3 w-3" />
               Accepting Sponsors
             </Badge>
@@ -147,13 +154,13 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
           )}
         </div>
         
-        <div className="flex gap-2 pt-2">
+        <div className="flex gap-1 pt-1">
           {project.liveUrl && (
             <Button
               size="sm"
               variant="outline"
               onClick={(e) => handleButtonClick(e, project.liveUrl!)}
-              className="flex items-center gap-1 hover:bg-blue-50 hover:border-blue-300 transition-colors"
+              className="flex items-center gap-1 hover:bg-blue-50 hover:border-blue-300 transition-colors h-7 px-2 text-xs"
               title="View Live Demo"
             >
               <Rocket className="h-3 w-3 text-blue-600" />
@@ -166,7 +173,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
               size="sm"
               variant="outline"
               onClick={(e) => handleButtonClick(e, project.githubUrl!)}
-              className="flex items-center gap-1 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+              className="flex items-center gap-1 hover:bg-gray-50 hover:border-gray-400 transition-colors h-7 px-2 text-xs"
               title="View Source Code"
             >
               <Terminal className="h-3 w-3 text-gray-700" />
@@ -179,7 +186,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
               size="sm"
               variant="outline"
               onClick={(e) => handleButtonClick(e, project.paperUrl!)}
-              className="flex items-center gap-1 hover:bg-purple-50 hover:border-purple-300 transition-colors"
+              className="flex items-center gap-1 hover:bg-purple-50 hover:border-purple-300 transition-colors h-7 px-2 text-xs"
               title="Read Research Paper"
             >
               <GraduationCap className="h-3 w-3 text-purple-600" />

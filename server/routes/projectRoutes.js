@@ -6,6 +6,7 @@ const sharp = require('sharp');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const ProjectService = require('../services/projectService');
+const ProjectUpdate = require('../models/ProjectUpdate');
 
 console.log('ProjectRoutes: Module loading...');
 
@@ -256,6 +257,183 @@ router.put('/order', auth, async (req, res) => {
     console.error('ProjectRoutes: Error updating project order:', error);
     console.error('ProjectRoutes: Error stack:', error.stack);
     res.status(500).json({ error: 'Failed to update project order' });
+  }
+});
+
+// PROJECT UPDATE ROUTES - NEW ADDITION
+
+// Get all updates for a project
+router.get('/:projectId/updates', auth, async (req, res) => {
+  console.log('ProjectRoutes: GET /:projectId/updates - Get project updates request received');
+  console.log('ProjectRoutes: Project ID:', req.params.projectId);
+  console.log('ProjectRoutes: User ID:', req.user?.id);
+
+  try {
+    const { projectId } = req.params;
+
+    // Verify project belongs to user
+    const project = await ProjectService.getProjectById(projectId, req.user.id);
+    if (!project) {
+      console.log('ProjectRoutes: Project not found or access denied');
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Get updates for this project
+    const updates = await ProjectUpdate.find({ 
+      projectId: projectId,
+      userId: req.user.id 
+    }).sort({ createdAt: -1 });
+
+    console.log('ProjectRoutes: Found', updates.length, 'updates for project');
+    res.json({ updates });
+  } catch (error) {
+    console.error('ProjectRoutes: Error fetching project updates:', error);
+    console.error('ProjectRoutes: Error stack:', error.stack);
+    res.status(500).json({ error: 'Failed to fetch project updates' });
+  }
+});
+
+// Add new update to a project
+router.post('/:projectId/updates', auth, async (req, res) => {
+  console.log('ProjectRoutes: POST /:projectId/updates - Add project update request received');
+  console.log('ProjectRoutes: Project ID:', req.params.projectId);
+  console.log('ProjectRoutes: User ID:', req.user?.id);
+  console.log('ProjectRoutes: Update data:', req.body);
+
+  try {
+    const { projectId } = req.params;
+    const { type, content, blockerType, blockerDetails } = req.body;
+
+    // Verify project belongs to user
+    const project = await ProjectService.getProjectById(projectId, req.user.id);
+    if (!project) {
+      console.log('ProjectRoutes: Project not found or access denied');
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Validate required fields
+    if (!type || !content) {
+      console.log('ProjectRoutes: Missing required fields');
+      return res.status(400).json({ error: 'Type and content are required' });
+    }
+
+    // Validate blocker type if this is a blocker
+    if (type === 'blocker' && !blockerType) {
+      console.log('ProjectRoutes: Missing blocker type for blocker update');
+      return res.status(400).json({ error: 'Blocker type is required for blocker updates' });
+    }
+
+    // Create new update
+    const updateData = {
+      projectId: projectId,
+      type: type,
+      content: content.trim(),
+      userId: req.user.id
+    };
+
+    if (type === 'blocker') {
+      updateData.blockerType = blockerType;
+      if (blockerDetails) {
+        updateData.blockerDetails = blockerDetails.trim();
+      }
+    }
+
+    const update = new ProjectUpdate(updateData);
+    await update.save();
+
+    console.log('ProjectRoutes: Project update created successfully:', update._id);
+    res.status(201).json({
+      update,
+      message: 'Update added successfully'
+    });
+  } catch (error) {
+    console.error('ProjectRoutes: Error creating project update:', error);
+    console.error('ProjectRoutes: Error stack:', error.stack);
+    res.status(500).json({ error: 'Failed to add project update' });
+  }
+});
+
+// Update an existing project update
+router.put('/:projectId/updates/:updateId', auth, async (req, res) => {
+  console.log('ProjectRoutes: PUT /:projectId/updates/:updateId - Update project update request received');
+  console.log('ProjectRoutes: Project ID:', req.params.projectId);
+  console.log('ProjectRoutes: Update ID:', req.params.updateId);
+  console.log('ProjectRoutes: User ID:', req.user?.id);
+  console.log('ProjectRoutes: Update data:', req.body);
+
+  try {
+    const { projectId, updateId } = req.params;
+
+    // Verify project belongs to user
+    const project = await ProjectService.getProjectById(projectId, req.user.id);
+    if (!project) {
+      console.log('ProjectRoutes: Project not found or access denied');
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Find and update the project update
+    const update = await ProjectUpdate.findOneAndUpdate(
+      { 
+        _id: updateId, 
+        projectId: projectId, 
+        userId: req.user.id 
+      },
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (!update) {
+      console.log('ProjectRoutes: Project update not found');
+      return res.status(404).json({ error: 'Update not found' });
+    }
+
+    console.log('ProjectRoutes: Project update updated successfully');
+    res.json({
+      update,
+      message: 'Update updated successfully'
+    });
+  } catch (error) {
+    console.error('ProjectRoutes: Error updating project update:', error);
+    console.error('ProjectRoutes: Error stack:', error.stack);
+    res.status(500).json({ error: 'Failed to update project update' });
+  }
+});
+
+// Delete a project update
+router.delete('/:projectId/updates/:updateId', auth, async (req, res) => {
+  console.log('ProjectRoutes: DELETE /:projectId/updates/:updateId - Delete project update request received');
+  console.log('ProjectRoutes: Project ID:', req.params.projectId);
+  console.log('ProjectRoutes: Update ID:', req.params.updateId);
+  console.log('ProjectRoutes: User ID:', req.user?.id);
+
+  try {
+    const { projectId, updateId } = req.params;
+
+    // Verify project belongs to user
+    const project = await ProjectService.getProjectById(projectId, req.user.id);
+    if (!project) {
+      console.log('ProjectRoutes: Project not found or access denied');
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Find and delete the project update
+    const result = await ProjectUpdate.findOneAndDelete({
+      _id: updateId,
+      projectId: projectId,
+      userId: req.user.id
+    });
+
+    if (!result) {
+      console.log('ProjectRoutes: Project update not found');
+      return res.status(404).json({ error: 'Update not found' });
+    }
+
+    console.log('ProjectRoutes: Project update deleted successfully');
+    res.json({ message: 'Update deleted successfully' });
+  } catch (error) {
+    console.error('ProjectRoutes: Error deleting project update:', error);
+    console.error('ProjectRoutes: Error stack:', error.stack);
+    res.status(500).json({ error: 'Failed to delete project update' });
   }
 });
 

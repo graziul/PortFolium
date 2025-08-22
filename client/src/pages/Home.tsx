@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Code, Briefcase, BookOpen, Users, Star, TrendingUp, Activity, GraduationCap, Building, UserCheck, Briefcase as BriefcaseIcon, Newspaper } from 'lucide-react';
+import { ArrowRight, Code, Briefcase, BookOpen, Users, Star, TrendingUp, Activity, GraduationCap, Building, UserCheck, Briefcase as BriefcaseIcon, Newspaper, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { getProjects, Project } from '@/api/projects';
 import { getBlogPosts, BlogPost } from '@/api/blog';
 import { getSkills, Skill } from '@/api/skills';
-import { getCollaborators, Collaborator } from '@/api/collaborators';
 import { useToast } from '@/hooks/useToast';
 import { Link } from 'react-router-dom';
 
@@ -16,26 +16,31 @@ export function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
-  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoveredCollabCard, setHoveredCollabCard] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Mock collaborator data for now
+  const mockCollaboratorStats = {
+    academia: { total: 5, subcategories: { postdoc: 2, junior_faculty: 2, senior_faculty: 1 } },
+    industry: { total: 3, subcategories: { industry_tech: 2, industry_finance: 1, industry_healthcare: 0 } },
+    students: { total: 4, subcategories: { undergraduate: 2, graduate: 2 } },
+    others: { total: 2, subcategories: { professional_ethicist: 1, journalist: 1 } }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         console.log('Fetching home page data...');
-        const [projectsResponse, blogResponse, skillsResponse, collaboratorsResponse] = await Promise.all([
+        const [projectsResponse, blogResponse, skillsResponse] = await Promise.all([
           getProjects(),
           getBlogPosts(),
-          getSkills(),
-          getCollaborators()
+          getSkills()
         ]);
 
         setProjects((projectsResponse as any).projects.slice(0, 3));
         setBlogPosts((blogResponse as any).posts.slice(0, 2));
         setSkills((skillsResponse as any).skills);
-        setCollaborators((collaboratorsResponse as any).collaborators);
         console.log('Home page data loaded successfully');
       } catch (error) {
         console.error('Error loading home page data:', error);
@@ -54,29 +59,7 @@ export function Home() {
 
   const topSkills = skills.filter(s => s.experienceLevel === 'expert' || s.experienceLevel === 'advanced').slice(0, 4);
   const completedProjects = projects.filter(p => p.status === 'completed').length;
-  const inProgressProjects = projects.filter(p => p.status === 'development').length;
-
-  const collaboratorsByType = collaborators.reduce((acc, collab) => {
-    // Group by main categories with subcategories
-    if (['postdoc', 'junior_faculty', 'senior_faculty'].includes(collab.type)) {
-      if (!acc['academia']) acc['academia'] = { total: 0, subcategories: {} };
-      acc['academia'].total += 1;
-      acc['academia'].subcategories[collab.type] = (acc['academia'].subcategories[collab.type] || 0) + 1;
-    } else if (['industry_tech', 'industry_finance', 'industry_healthcare'].includes(collab.type)) {
-      if (!acc['industry']) acc['industry'] = { total: 0, subcategories: {} };
-      acc['industry'].total += 1;
-      acc['industry'].subcategories[collab.type] = (acc['industry'].subcategories[collab.type] || 0) + 1;
-    } else if (['undergraduate', 'graduate'].includes(collab.type)) {
-      if (!acc['students']) acc['students'] = { total: 0, subcategories: {} };
-      acc['students'].total += 1;
-      acc['students'].subcategories[collab.type] = (acc['students'].subcategories[collab.type] || 0) + 1;
-    } else if (['professional_ethicist', 'journalist'].includes(collab.type)) {
-      if (!acc['others']) acc['others'] = { total: 0, subcategories: {} };
-      acc['others'].total += 1;
-      acc['others'].subcategories[collab.type] = (acc['others'].subcategories[collab.type] || 0) + 1;
-    }
-    return acc;
-  }, {} as Record<string, { total: number; subcategories: Record<string, number> }>);
+  const inProgressProjects = projects.filter(p => p.status === 'in-progress').length;
 
   const formatSubcategoryName = (type: string) => {
     const names = {
@@ -94,6 +77,13 @@ export function Home() {
     return names[type as keyof typeof names] || type;
   };
 
+  const scrollToCollaborators = () => {
+    const collaboratorsSection = document.getElementById('collaborators-section');
+    if (collaboratorsSection) {
+      collaboratorsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -101,6 +91,8 @@ export function Home() {
       </div>
     );
   }
+
+  const totalCollaborators = Object.values(mockCollaboratorStats).reduce((sum, category) => sum + category.total, 0);
 
   return (
     <div className="space-y-16">
@@ -217,10 +209,13 @@ export function Home() {
           </CardHeader>
         </Card>
 
-        <Card className="group hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 border-purple-200 dark:border-purple-800">
+        <Card
+          className="group hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 border-purple-200 dark:border-purple-800 cursor-pointer"
+          onClick={scrollToCollaborators}
+        >
           <CardHeader className="text-center">
             <Users className="h-8 w-8 mx-auto text-purple-600 group-hover:scale-110 transition-transform" />
-            <CardTitle className="text-purple-700 dark:text-purple-300">{collaborators.length}</CardTitle>
+            <CardTitle className="text-purple-700 dark:text-purple-300">{totalCollaborators}</CardTitle>
             <CardDescription>Collaborators</CardDescription>
           </CardHeader>
         </Card>
@@ -236,6 +231,7 @@ export function Home() {
 
       {/* Collaboration Highlight */}
       <motion.section
+        id="collaborators-section"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.8, duration: 0.6 }}
@@ -249,7 +245,7 @@ export function Home() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <Card 
+          <Card
             className="text-center bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm border-white/40 transition-all duration-300 hover:shadow-lg cursor-pointer"
             onMouseEnter={() => setHoveredCollabCard('academia')}
             onMouseLeave={() => setHoveredCollabCard(null)}
@@ -257,21 +253,21 @@ export function Home() {
             <CardHeader className="pb-2">
               <GraduationCap className="h-8 w-8 mx-auto text-blue-600 mb-2" />
               <CardTitle className="text-2xl text-blue-700 dark:text-blue-300">
-                {collaboratorsByType.academia?.total || 0}
+                {mockCollaboratorStats.academia?.total || 0}
               </CardTitle>
               <CardDescription className="text-xs">Academia</CardDescription>
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, height: 0 }}
-                animate={{ 
+                animate={{
                   opacity: hoveredCollabCard === 'academia' ? 1 : 0,
                   height: hoveredCollabCard === 'academia' ? 'auto' : 0
                 }}
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                {hoveredCollabCard === 'academia' && collaboratorsByType.academia && (
+                {hoveredCollabCard === 'academia' && mockCollaboratorStats.academia && (
                   <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                    {Object.entries(collaboratorsByType.academia.subcategories).map(([type, count]) => (
+                    {Object.entries(mockCollaboratorStats.academia.subcategories).map(([type, count]) => (
                       <div key={type} className="flex justify-between">
                         <span>{formatSubcategoryName(type)}:</span>
                         <span>{count}</span>
@@ -283,7 +279,7 @@ export function Home() {
             </CardHeader>
           </Card>
 
-          <Card 
+          <Card
             className="text-center bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm border-white/40 transition-all duration-300 hover:shadow-lg cursor-pointer"
             onMouseEnter={() => setHoveredCollabCard('industry')}
             onMouseLeave={() => setHoveredCollabCard(null)}
@@ -291,21 +287,21 @@ export function Home() {
             <CardHeader className="pb-2">
               <BriefcaseIcon className="h-8 w-8 mx-auto text-green-600 mb-2" />
               <CardTitle className="text-2xl text-green-700 dark:text-green-300">
-                {collaboratorsByType.industry?.total || 0}
+                {mockCollaboratorStats.industry?.total || 0}
               </CardTitle>
               <CardDescription className="text-xs">Industry</CardDescription>
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, height: 0 }}
-                animate={{ 
+                animate={{
                   opacity: hoveredCollabCard === 'industry' ? 1 : 0,
                   height: hoveredCollabCard === 'industry' ? 'auto' : 0
                 }}
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                {hoveredCollabCard === 'industry' && collaboratorsByType.industry && (
+                {hoveredCollabCard === 'industry' && mockCollaboratorStats.industry && (
                   <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                    {Object.entries(collaboratorsByType.industry.subcategories).map(([type, count]) => (
+                    {Object.entries(mockCollaboratorStats.industry.subcategories).map(([type, count]) => (
                       <div key={type} className="flex justify-between">
                         <span>{formatSubcategoryName(type)}:</span>
                         <span>{count}</span>
@@ -317,7 +313,7 @@ export function Home() {
             </CardHeader>
           </Card>
 
-          <Card 
+          <Card
             className="text-center bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm border-white/40 transition-all duration-300 hover:shadow-lg cursor-pointer"
             onMouseEnter={() => setHoveredCollabCard('students')}
             onMouseLeave={() => setHoveredCollabCard(null)}
@@ -325,21 +321,21 @@ export function Home() {
             <CardHeader className="pb-2">
               <Users className="h-8 w-8 mx-auto text-purple-600 mb-2" />
               <CardTitle className="text-2xl text-purple-700 dark:text-purple-300">
-                {collaboratorsByType.students?.total || 0}
+                {mockCollaboratorStats.students?.total || 0}
               </CardTitle>
               <CardDescription className="text-xs">Students</CardDescription>
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, height: 0 }}
-                animate={{ 
+                animate={{
                   opacity: hoveredCollabCard === 'students' ? 1 : 0,
                   height: hoveredCollabCard === 'students' ? 'auto' : 0
                 }}
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                {hoveredCollabCard === 'students' && collaboratorsByType.students && (
+                {hoveredCollabCard === 'students' && mockCollaboratorStats.students && (
                   <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                    {Object.entries(collaboratorsByType.students.subcategories).map(([type, count]) => (
+                    {Object.entries(mockCollaboratorStats.students.subcategories).map(([type, count]) => (
                       <div key={type} className="flex justify-between">
                         <span>{formatSubcategoryName(type)}:</span>
                         <span>{count}</span>
@@ -351,7 +347,7 @@ export function Home() {
             </CardHeader>
           </Card>
 
-          <Card 
+          <Card
             className="text-center bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm border-white/40 transition-all duration-300 hover:shadow-lg cursor-pointer"
             onMouseEnter={() => setHoveredCollabCard('others')}
             onMouseLeave={() => setHoveredCollabCard(null)}
@@ -359,21 +355,21 @@ export function Home() {
             <CardHeader className="pb-2">
               <Newspaper className="h-8 w-8 mx-auto text-orange-600 mb-2" />
               <CardTitle className="text-2xl text-orange-700 dark:text-orange-300">
-                {collaboratorsByType.others?.total || 0}
+                {mockCollaboratorStats.others?.total || 0}
               </CardTitle>
               <CardDescription className="text-xs">Others</CardDescription>
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, height: 0 }}
-                animate={{ 
+                animate={{
                   opacity: hoveredCollabCard === 'others' ? 1 : 0,
                   height: hoveredCollabCard === 'others' ? 'auto' : 0
                 }}
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                {hoveredCollabCard === 'others' && collaboratorsByType.others && (
+                {hoveredCollabCard === 'others' && mockCollaboratorStats.others && (
                   <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                    {Object.entries(collaboratorsByType.others.subcategories).map(([type, count]) => (
+                    {Object.entries(mockCollaboratorStats.others.subcategories).map(([type, count]) => (
                       <div key={type} className="flex justify-between">
                         <span>{formatSubcategoryName(type)}:</span>
                         <span>{count}</span>
@@ -417,52 +413,54 @@ export function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.1 + index * 0.1, duration: 0.6 }}
             >
-              <Card className="group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-white/20">
-                <div className="aspect-video overflow-hidden relative">
-                  <img
-                    src={project.thumbnail}
-                    alt={project.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute top-4 right-4 flex gap-2">
-                    <Badge
-                      variant={project.status === 'completed' ? 'default' : project.status === 'development' ? 'secondary' : 'outline'}
-                      className="bg-white/90 dark:bg-gray-900/90"
-                    >
-                      {project.status}
-                    </Badge>
-                    {project.openToCollaborators && (
-                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                        <Users className="h-3 w-3 mr-1" />
-                        Open
+              <Link to={`/projects/${project._id}`}>
+                <Card className="group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-white/20">
+                  <div className="aspect-video overflow-hidden relative">
+                    <img
+                      src={project.thumbnailUrl ? `http://localhost:3000${project.thumbnailUrl}` : 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=300&fit=crop'}
+                      alt={project.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute top-4 right-4 flex gap-2">
+                      <Badge
+                        variant={project.status === 'completed' ? 'default' : project.status === 'in-progress' ? 'secondary' : 'outline'}
+                        className="bg-white/90 dark:bg-gray-900/90"
+                      >
+                        {project.status}
                       </Badge>
-                    )}
+                      {project.openToCollaborators && (
+                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                          <Users className="h-3 w-3 mr-1" />
+                          Open
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{project.title}</CardTitle>
-                    {project.featured && (
-                      <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                    )}
-                  </div>
-                  <CardDescription>{project.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {project.technologies.slice(0, 3).map((tech) => (
-                      <Badge key={tech} variant="outline" className="text-xs">
-                        {tech}
-                      </Badge>
-                    ))}
-                    {project.technologies.length > 3 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{project.technologies.length - 3}
-                      </Badge>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{project.title}</CardTitle>
+                      {project.featured && (
+                        <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                      )}
+                    </div>
+                    <CardDescription>{project.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {project.technologies.slice(0, 3).map((tech) => (
+                        <Badge key={tech} variant="outline" className="text-xs">
+                          {tech}
+                        </Badge>
+                      ))}
+                      {project.technologies.length > 3 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{project.technologies.length - 3}
+                        </Badge>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
             </motion.div>
           ))}
         </div>
