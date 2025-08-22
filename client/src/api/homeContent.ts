@@ -10,6 +10,7 @@ export interface HomeContent {
   name: string;
   tagline: string;
   bio: string;
+  headerText?: string;
   profileImageUrl?: string;
   yearsExperience: number;
   coreExpertise: string[];
@@ -92,7 +93,7 @@ export const uploadProfileImage = async (file: File) => {
 // Response: { collaborators: Collaborator[] }
 export const getCollaborators = async () => {
   try {
-    console.log('HomeContent API: Fetching collaborators...');
+    console.log('HomeContent API: Collaborators fetching...');
     const response = await api.get('/api/home-content/collaborators');
     console.log('HomeContent API: Collaborators fetched successfully');
     return response.data;

@@ -23,6 +23,28 @@ export interface Education {
   description?: string;
 }
 
+export interface User {
+  _id: string;
+  email: string;
+  name: string;
+  bio: string;
+  location: string;
+  phone: string;
+  socialLinks: {
+    linkedin: string;
+    github: string;
+    twitter: string;
+    website: string;
+  };
+  experiences?: Experience[];
+  education?: Education[];
+  certifications?: string[];
+  languages?: string[];
+  createdAt: string;
+  lastLoginAt: string;
+  isActive: boolean;
+}
+
 export interface UserProfile {
   _id: string;
   email: string;
@@ -70,14 +92,14 @@ export const getUserProfile = async (): Promise<UserProfile> => {
   try {
     console.log('Profile API: Starting getUserProfile request');
     console.log('Profile API: Making GET request to /api/users/profile');
-    
+
     const response = await api.get('/api/users/profile');
-    
+
     console.log('Profile API: Received response from /api/users/profile');
     console.log('Profile API: Response status:', response.status);
     console.log('Profile API: Response data:', response.data);
     console.log('Profile API: User profile fetched successfully');
-    
+
     return response.data;
   } catch (error: any) {
     console.error('Profile API: Error in getUserProfile');
@@ -87,10 +109,13 @@ export const getUserProfile = async (): Promise<UserProfile> => {
     console.error('Profile API: Error response status:', error.response?.status);
     console.error('Profile API: Error response data:', error.response?.data);
     console.error('Profile API: Error response headers:', error.response?.headers);
-    
+
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
+
+// Alias for backward compatibility
+export const getProfile = getUserProfile;
 
 // Description: Update current user's profile information
 // Endpoint: PUT /api/users/profile

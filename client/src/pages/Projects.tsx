@@ -9,8 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { getProjects, deleteProject, Project } from '@/api/projects';
 import { useToast } from '@/hooks/useToast';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Fuse from 'fuse.js';
+
+// Energy level emoji mapping
+const energyEmojis = {
+  'Low': '😴',
+  'Medium': '😊',
+  'High': '🤩',
+  'Very High': '🚀'
+};
 
 export function Projects() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -22,6 +30,7 @@ export function Projects() {
   const [deletingProject, setDeletingProject] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const fuse = new Fuse(projects, {
     keys: ['title', 'description', 'technologies'],
@@ -30,7 +39,7 @@ export function Projects() {
 
   const fetchProjects = async () => {
     try {
-      console.log('Fetching projects...');
+      console.log('Projects: Fetching projects...');
       const response = await getProjects();
       const allProjects = response.projects;
 
@@ -43,9 +52,9 @@ export function Projects() {
 
       setProjects(sortedProjects);
       setFilteredProjects(sortedProjects);
-      console.log('Projects loaded successfully');
+      console.log('Projects: Projects loaded successfully');
     } catch (error: any) {
-      console.error('Error loading projects:', error);
+      console.error('Projects: Error loading projects:', error);
       toast({
         title: "Error",
         description: error.message,
@@ -60,6 +69,15 @@ export function Projects() {
     fetchProjects();
   }, []);
 
+  // Handle URL parameters for filtering
+  useEffect(() => {
+    const statusParam = searchParams.get('status');
+    if (statusParam && statusParam !== 'all') {
+      console.log('Projects: Setting status filter from URL:', statusParam);
+      setStatusFilter(statusParam);
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     let filtered = projects;
 
@@ -71,6 +89,7 @@ export function Projects() {
 
     // Apply status filter
     if (statusFilter !== 'all') {
+      console.log('Projects: Applying status filter:', statusFilter);
       filtered = filtered.filter(project => project.status === statusFilter);
     }
 
@@ -86,13 +105,14 @@ export function Projects() {
       return 0;
     });
 
+    console.log('Projects: Filtered projects count:', filtered.length);
     setFilteredProjects(filtered);
   }, [searchTerm, statusFilter, categoryFilter, projects, fuse]);
 
   const handleDeleteProject = async (projectId: string) => {
     setDeletingProject(projectId);
     try {
-      console.log('Deleting project:', projectId);
+      console.log('Projects: Deleting project:', projectId);
       await deleteProject(projectId);
       toast({
         title: "Success",
@@ -101,7 +121,7 @@ export function Projects() {
       // Refresh the projects list
       await fetchProjects();
     } catch (error: any) {
-      console.error('Error deleting project:', error);
+      console.error('Projects: Error deleting project:', error);
       toast({
         title: "Error",
         description: error.message,
@@ -234,7 +254,7 @@ export function Projects() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 + index * 0.05, duration: 0.6 }}
           >
-            <Card 
+            <Card
               className={`group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-white/20 h-full border-l-4 ${impactColors[project.impact || 'foundational']} cursor-pointer`}
               onClick={() => handleProjectClick(project._id)}
             >
@@ -345,6 +365,15 @@ export function Projects() {
               </CardHeader>
 
               <CardContent className="space-y-4">
+                {/* Energy Level Display */}
+                {project.enthusiasmLevel && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">
+                      Energy: {energyEmojis[project.enthusiasmLevel]}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap gap-2">
                   {project.technologies.map((tech) => (
                     <Badge key={tech} variant="outline" className="text-xs">

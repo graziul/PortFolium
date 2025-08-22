@@ -164,7 +164,10 @@ export function ProjectDetails() {
                     </Badge>
                     {project.enthusiasmLevel && (
                       <Badge variant="outline">
-                        Energy: {project.enthusiasmLevel}
+                        Energy: {project.enthusiasmLevel === 'Low' ? '😴' :
+                                project.enthusiasmLevel === 'Medium' ? '😊' :
+                                project.enthusiasmLevel === 'High' ? '🤩' :
+                                project.enthusiasmLevel === 'Very High' ? '🚀' : '😊'}
                       </Badge>
                     )}
                   </div>

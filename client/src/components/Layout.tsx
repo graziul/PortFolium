@@ -1,19 +1,17 @@
-import { Outlet } from "react-router-dom"
-import { Header } from "./Header"
-import { Footer } from "./Footer"
+import { Outlet } from 'react-router-dom';
+import { Header } from './Header';
+import { Footer } from './Footer';
 
 export function Layout() {
+  console.log('Layout: Component rendering...');
+  
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-secondary">
+    <div className="min-h-screen flex flex-col">
       <Header />
-      <div className="flex h-[calc(100vh-4rem)] pt-16">
-        <main className="flex-1 overflow-y-auto p-6 pb-20">
-          <div className="mx-auto max-w-7xl">
-            <Outlet />
-          </div>
-        </main>
-      </div>
+      <main className="flex-1 container mx-auto px-4 py-8">
+        <Outlet />
+      </main>
       <Footer />
     </div>
-  )
+  );
 }

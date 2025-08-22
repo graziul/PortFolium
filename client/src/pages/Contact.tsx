@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
-import { Mail, Phone, MapPin, Send, Linkedin, Github, Twitter } from 'lucide-react';
+import { Mail, MapPin, Send, Linkedin, Github, Twitter, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/useToast';
+import { getUserProfile, User } from '@/api/profile';
+import { getHomeContent, HomeContent } from '@/api/homeContent';
 
 interface ContactForm {
   name: string;
@@ -18,8 +20,37 @@ interface ContactForm {
 
 export function Contact() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profile, setProfile] = useState<User | null>(null);
+  const [homeContent, setHomeContent] = useState<HomeContent | null>(null);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ContactForm>();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        console.log('Contact: Fetching user profile and home content...');
+        const [profileResponse, homeContentResponse] = await Promise.all([
+          getUserProfile(),
+          getHomeContent().catch(() => ({ homeContent: null }))
+        ]);
+        setProfile(profileResponse);
+        setHomeContent(homeContentResponse.homeContent);
+        console.log('Contact: Data loaded successfully');
+      } catch (error: any) {
+        console.error('Contact: Error loading data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load contact information",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [toast]);
 
   const onSubmit = async (data: ContactForm) => {
     setIsSubmitting(true);
@@ -28,12 +59,12 @@ export function Contact() {
     // Simulate API call
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       toast({
         title: "Message sent!",
         description: "Thank you for your message. I'll get back to you soon.",
       });
-      
+
       reset();
       console.log('Contact form submitted successfully');
     } catch (error) {
@@ -46,6 +77,22 @@ export function Contact() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Use social links from home content if available, otherwise fall back to profile
+  const socialLinks = homeContent?.socialLinks || profile?.socialLinks || {
+    linkedin: '',
+    github: '',
+    twitter: '',
+    website: ''
   };
 
   return (
@@ -87,58 +134,64 @@ export function Contact() {
                 </div>
                 <div>
                   <p className="font-medium">Email</p>
-                  <p className="text-sm text-muted-foreground">john.doe@example.com</p>
+                  <p className="text-sm text-muted-foreground">{profile?.email || 'john.doe@example.com'}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                  <Phone className="h-5 w-5 text-green-600" />
+              {profile?.location && (
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                    <MapPin className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Location</p>
+                    <p className="text-sm text-muted-foreground">{profile.location}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium">Phone</p>
-                  <p className="text-sm text-muted-foreground">+1 (555) 123-4567</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-                  <MapPin className="h-5 w-5 text-purple-600" />
-                </div>
-                <div>
-                  <p className="font-medium">Location</p>
-                  <p className="text-sm text-muted-foreground">San Francisco, CA</p>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
           <Card className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-white/20">
             <CardHeader>
-              <CardTitle>Social Media</CardTitle>
+              <CardTitle>Connect With Me</CardTitle>
               <CardDescription>
-                Connect with me on social platforms
+                Follow me on social platforms for updates and insights
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full justify-start" asChild>
-                <a href="https://linkedin.com/in/johndoe" target="_blank" rel="noopener noreferrer">
-                  <Linkedin className="h-4 w-4 mr-2" />
-                  LinkedIn
-                </a>
-              </Button>
-              <Button variant="outline" className="w-full justify-start" asChild>
-                <a href="https://github.com/johndoe" target="_blank" rel="noopener noreferrer">
-                  <Github className="h-4 w-4 mr-2" />
-                  GitHub
-                </a>
-              </Button>
-              <Button variant="outline" className="w-full justify-start" asChild>
-                <a href="https://twitter.com/johndoe" target="_blank" rel="noopener noreferrer">
-                  <Twitter className="h-4 w-4 mr-2" />
-                  Twitter
-                </a>
-              </Button>
+              {socialLinks.linkedin && (
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <a href={socialLinks.linkedin} target="_blank" rel="noopener noreferrer">
+                    <Linkedin className="h-4 w-4 mr-2" />
+                    LinkedIn
+                  </a>
+                </Button>
+              )}
+              {socialLinks.github && (
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <a href={socialLinks.github} target="_blank" rel="noopener noreferrer">
+                    <Github className="h-4 w-4 mr-2" />
+                    GitHub
+                  </a>
+                </Button>
+              )}
+              {socialLinks.twitter && (
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer">
+                    <Twitter className="h-4 w-4 mr-2" />
+                    Twitter
+                  </a>
+                </Button>
+              )}
+              {socialLinks.website && (
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <a href={socialLinks.website} target="_blank" rel="noopener noreferrer">
+                    <Globe className="h-4 w-4 mr-2" />
+                    Website
+                  </a>
+                </Button>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -178,7 +231,7 @@ export function Contact() {
                     <Input
                       id="email"
                       type="email"
-                      {...register('email', { 
+                      {...register('email', {
                         required: 'Email is required',
                         pattern: {
                           value: /^\S+@\S+$/i,
@@ -221,8 +274,8 @@ export function Contact() {
                   )}
                 </div>
 
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={isSubmitting}
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 >

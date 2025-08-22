@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { PlusIcon, PencilIcon, TrashIcon, MailIcon, BriefcaseIcon, GraduationCapIcon, LinkIcon } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { PlusIcon, PencilIcon, TrashIcon, MailIcon, BriefcaseIcon, GraduationCapIcon, TrophyIcon, StarIcon, AwardIcon, CalendarIcon } from 'lucide-react';
 import { getUserProfile, updateUserProfile, addExperience, deleteExperience, addEducation, deleteEducation, type UserProfile } from '@/api/profile';
 import { CareerTimeline } from '@/components/CareerTimeline';
 import { useToast } from '@/hooks/useToast';
@@ -34,9 +35,18 @@ interface Education {
   gpa?: string;
 }
 
+interface Accomplishment {
+  _id?: string;
+  title: string;
+  description: string;
+  date: string;
+  category: 'professional' | 'personal' | 'academic' | 'hobby';
+}
+
 interface ExtendedUserProfile extends UserProfile {
   experiences?: Experience[];
   education?: Education[];
+  accomplishments?: Accomplishment[];
 }
 
 export const About: React.FC = () => {
@@ -45,19 +55,14 @@ export const About: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [showExperienceDialog, setShowExperienceDialog] = useState(false);
   const [showEducationDialog, setShowEducationDialog] = useState(false);
+  const [showAccomplishmentDialog, setShowAccomplishmentDialog] = useState(false);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
     name: '',
     bio: '',
     location: '',
-    phone: '',
-    socialLinks: {
-      linkedin: '',
-      github: '',
-      twitter: '',
-      website: ''
-    }
+    phone: ''
   });
 
   const [experienceForm, setExperienceForm] = useState({
@@ -81,6 +86,13 @@ export const About: React.FC = () => {
     gpa: ''
   });
 
+  const [accomplishmentForm, setAccomplishmentForm] = useState({
+    title: '',
+    description: '',
+    date: '',
+    category: 'professional' as 'professional' | 'personal' | 'academic' | 'hobby'
+  });
+
   useEffect(() => {
     fetchProfile();
   }, []);
@@ -88,22 +100,18 @@ export const About: React.FC = () => {
   const fetchProfile = async () => {
     try {
       setIsLoading(true);
+      console.log('About: Fetching user profile...');
       const userData = await getUserProfile();
+      console.log('About: Profile loaded successfully');
       setProfile(userData);
       setFormData({
         name: userData.name || '',
         bio: userData.bio || '',
         location: userData.location || '',
-        phone: userData.phone || '',
-        socialLinks: {
-          linkedin: userData.socialLinks?.linkedin || '',
-          github: userData.socialLinks?.github || '',
-          twitter: userData.socialLinks?.twitter || '',
-          website: userData.socialLinks?.website || ''
-        }
+        phone: userData.phone || ''
       });
     } catch (error: any) {
-      console.error('Error fetching profile:', error);
+      console.error('About: Error fetching profile:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to load profile data",
@@ -116,14 +124,17 @@ export const About: React.FC = () => {
 
   const handleSaveProfile = async () => {
     try {
+      console.log('About: Saving profile changes...');
       const updatedProfile = await updateUserProfile(formData);
       setProfile(prev => ({ ...prev, ...updatedProfile }));
       setIsEditing(false);
+      console.log('About: Profile updated successfully');
       toast({
         title: "Success",
         description: "Profile updated successfully",
       });
     } catch (error: any) {
+      console.error('About: Error updating profile:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to update profile",
@@ -134,6 +145,7 @@ export const About: React.FC = () => {
 
   const handleAddExperience = async () => {
     try {
+      console.log('About: Adding new experience...');
       const newExperience = await addExperience(experienceForm);
       if (profile) {
         const updatedExperiences = [...(profile.experiences || []), newExperience];
@@ -150,8 +162,10 @@ export const About: React.FC = () => {
         achievements: []
       });
       setShowExperienceDialog(false);
+      console.log('About: Experience added successfully');
       toast({ title: "Success", description: "Experience added successfully" });
     } catch (error: any) {
+      console.error('About: Error adding experience:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to add experience",
@@ -162,13 +176,16 @@ export const About: React.FC = () => {
 
   const handleDeleteExperience = async (experienceId: string) => {
     try {
+      console.log('About: Deleting experience:', experienceId);
       await deleteExperience(experienceId);
       if (profile) {
         const updatedExperiences = profile.experiences?.filter(exp => exp._id !== experienceId) || [];
         setProfile({ ...profile, experiences: updatedExperiences });
       }
+      console.log('About: Experience deleted successfully');
       toast({ title: "Success", description: "Experience deleted successfully" });
     } catch (error: any) {
+      console.error('About: Error deleting experience:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to delete experience",
@@ -179,6 +196,7 @@ export const About: React.FC = () => {
 
   const handleAddEducation = async () => {
     try {
+      console.log('About: Adding new education...');
       const newEducation = await addEducation(educationForm);
       if (profile) {
         const updatedEducation = [...(profile.education || []), newEducation];
@@ -194,8 +212,10 @@ export const About: React.FC = () => {
         gpa: ''
       });
       setShowEducationDialog(false);
+      console.log('About: Education added successfully');
       toast({ title: "Success", description: "Education added successfully" });
     } catch (error: any) {
+      console.error('About: Error adding education:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to add education",
@@ -206,18 +226,103 @@ export const About: React.FC = () => {
 
   const handleDeleteEducation = async (educationId: string) => {
     try {
+      console.log('About: Deleting education:', educationId);
       await deleteEducation(educationId);
       if (profile) {
         const updatedEducation = profile.education?.filter(edu => edu._id !== educationId) || [];
         setProfile({ ...profile, education: updatedEducation });
       }
+      console.log('About: Education deleted successfully');
       toast({ title: "Success", description: "Education deleted successfully" });
     } catch (error: any) {
+      console.error('About: Error deleting education:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to delete education",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleAddAccomplishment = async () => {
+    try {
+      console.log('About: Adding new accomplishment...');
+      // For now, we'll add it to the local state since the backend might not have this endpoint yet
+      const newAccomplishment: Accomplishment = {
+        _id: Date.now().toString(), // Temporary ID
+        ...accomplishmentForm
+      };
+      
+      if (profile) {
+        const updatedAccomplishments = [...(profile.accomplishments || []), newAccomplishment];
+        setProfile({ ...profile, accomplishments: updatedAccomplishments });
+      }
+      
+      setAccomplishmentForm({
+        title: '',
+        description: '',
+        date: '',
+        category: 'professional'
+      });
+      setShowAccomplishmentDialog(false);
+      console.log('About: Accomplishment added successfully');
+      toast({ title: "Success", description: "Accomplishment added successfully" });
+    } catch (error: any) {
+      console.error('About: Error adding accomplishment:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add accomplishment",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteAccomplishment = (accomplishmentId: string) => {
+    try {
+      console.log('About: Deleting accomplishment:', accomplishmentId);
+      if (profile) {
+        const updatedAccomplishments = profile.accomplishments?.filter(acc => acc._id !== accomplishmentId) || [];
+        setProfile({ ...profile, accomplishments: updatedAccomplishments });
+      }
+      console.log('About: Accomplishment deleted successfully');
+      toast({ title: "Success", description: "Accomplishment deleted successfully" });
+    } catch (error: any) {
+      console.error('About: Error deleting accomplishment:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete accomplishment",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'professional':
+        return <BriefcaseIcon className="w-4 h-4" />;
+      case 'academic':
+        return <GraduationCapIcon className="w-4 h-4" />;
+      case 'personal':
+        return <StarIcon className="w-4 h-4" />;
+      case 'hobby':
+        return <AwardIcon className="w-4 h-4" />;
+      default:
+        return <TrophyIcon className="w-4 h-4" />;
+    }
+  };
+
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case 'professional':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'academic':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'personal':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'hobby':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
@@ -238,7 +343,7 @@ export const About: React.FC = () => {
         <div className="flex justify-between items-start mb-8">
           <div>
             <h1 className="text-4xl font-bold mb-2">About Me</h1>
-            <p className="text-lg text-gray-600">Professional background and experience</p>
+            <p className="text-lg text-gray-600">Professional background, experience, and personal accomplishments</p>
           </div>
           <Button onClick={() => setIsEditing(!isEditing)} variant={isEditing ? "outline" : "default"}>
             <PencilIcon className="w-4 h-4 mr-2" />
@@ -274,63 +379,6 @@ export const About: React.FC = () => {
                     <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
                   </div>
                 </div>
-                
-                <div className="space-y-4">
-                  <Label className="text-base font-semibold flex items-center gap-2">
-                    <LinkIcon className="w-4 h-4" />
-                    Social Links
-                  </Label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="linkedin">LinkedIn</Label>
-                      <Input 
-                        id="linkedin" 
-                        value={formData.socialLinks.linkedin} 
-                        onChange={(e) => setFormData({ 
-                          ...formData, 
-                          socialLinks: { ...formData.socialLinks, linkedin: e.target.value }
-                        })} 
-                        placeholder="https://linkedin.com/in/username"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="github">GitHub</Label>
-                      <Input 
-                        id="github" 
-                        value={formData.socialLinks.github} 
-                        onChange={(e) => setFormData({ 
-                          ...formData, 
-                          socialLinks: { ...formData.socialLinks, github: e.target.value }
-                        })} 
-                        placeholder="https://github.com/username"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="twitter">Twitter</Label>
-                      <Input 
-                        id="twitter" 
-                        value={formData.socialLinks.twitter} 
-                        onChange={(e) => setFormData({ 
-                          ...formData, 
-                          socialLinks: { ...formData.socialLinks, twitter: e.target.value }
-                        })} 
-                        placeholder="https://twitter.com/username"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="website">Website</Label>
-                      <Input 
-                        id="website" 
-                        value={formData.socialLinks.website} 
-                        onChange={(e) => setFormData({ 
-                          ...formData, 
-                          socialLinks: { ...formData.socialLinks, website: e.target.value }
-                        })} 
-                        placeholder="https://yourwebsite.com"
-                      />
-                    </div>
-                  </div>
-                </div>
 
                 <div className="flex gap-2">
                   <Button onClick={handleSaveProfile}>Save Changes</Button>
@@ -348,37 +396,62 @@ export const About: React.FC = () => {
                   {profile?.phone && <span>📞 {profile.phone}</span>}
                   {profile?.email && <span>✉️ {profile.email}</span>}
                 </div>
-                
-                {profile?.socialLinks && (
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-sm text-gray-700 flex items-center gap-2">
-                      <LinkIcon className="w-4 h-4" />
-                      Social Links
-                    </h4>
-                    <div className="flex flex-wrap gap-4 text-sm">
-                      {profile.socialLinks.linkedin && (
-                        <a href={profile.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                          LinkedIn
-                        </a>
-                      )}
-                      {profile.socialLinks.github && (
-                        <a href={profile.socialLinks.github} target="_blank" rel="noopener noreferrer" className="text-gray-800 hover:underline">
-                          GitHub
-                        </a>
-                      )}
-                      {profile.socialLinks.twitter && (
-                        <a href={profile.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
-                          Twitter
-                        </a>
-                      )}
-                      {profile.socialLinks.website && (
-                        <a href={profile.socialLinks.website} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline">
-                          Website
-                        </a>
-                      )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="mb-8">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle className="flex items-center gap-2">
+                <TrophyIcon className="w-5 h-5" />
+                Personal Accomplishments
+              </CardTitle>
+              <Button variant="outline" size="sm" onClick={() => setShowAccomplishmentDialog(true)}>
+                <PlusIcon className="w-4 h-4 mr-2" />
+                Add Accomplishment
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {profile?.accomplishments && profile.accomplishments.length > 0 ? (
+              <div className="space-y-4">
+                {profile.accomplishments
+                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                  .map((accomplishment) => (
+                  <div key={accomplishment._id} className="border p-4 rounded-lg bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="text-lg font-semibold">{accomplishment.title}</h4>
+                          <Badge className={`text-xs flex items-center gap-1 ${getCategoryColor(accomplishment.category)}`}>
+                            {getCategoryIcon(accomplishment.category)}
+                            {accomplishment.category}
+                          </Badge>
+                        </div>
+                        <p className="text-gray-700 mb-2">{accomplishment.description}</p>
+                        <div className="flex items-center gap-1 text-sm text-gray-500">
+                          <CalendarIcon className="w-4 h-4" />
+                          <span>{new Date(accomplishment.date).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => accomplishment._id && handleDeleteAccomplishment(accomplishment._id)}
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
-                )}
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <TrophyIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>No accomplishments added yet.</p>
+                <p className="text-sm">Share your achievements, awards, certifications, and personal milestones!</p>
               </div>
             )}
           </CardContent>
@@ -487,6 +560,64 @@ export const About: React.FC = () => {
             )}
           </CardContent>
         </Card>
+
+        <Dialog open={showAccomplishmentDialog} onOpenChange={setShowAccomplishmentDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Accomplishment</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="acc-title">Title</Label>
+                <Input
+                  id="acc-title"
+                  value={accomplishmentForm.title}
+                  onChange={(e) => setAccomplishmentForm({ ...accomplishmentForm, title: e.target.value })}
+                  placeholder="e.g., Published Research Paper, Won Hackathon, Completed Marathon"
+                />
+              </div>
+              <div>
+                <Label htmlFor="acc-description">Description</Label>
+                <Textarea
+                  id="acc-description"
+                  value={accomplishmentForm.description}
+                  onChange={(e) => setAccomplishmentForm({ ...accomplishmentForm, description: e.target.value })}
+                  placeholder="Describe your accomplishment and its significance..."
+                  rows={3}
+                />
+              </div>
+              <div>
+                <Label htmlFor="acc-date">Date</Label>
+                <Input
+                  id="acc-date"
+                  type="date"
+                  value={accomplishmentForm.date}
+                  onChange={(e) => setAccomplishmentForm({ ...accomplishmentForm, date: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="acc-category">Category</Label>
+                <select
+                  id="acc-category"
+                  value={accomplishmentForm.category}
+                  onChange={(e) => setAccomplishmentForm({ 
+                    ...accomplishmentForm, 
+                    category: e.target.value as 'professional' | 'personal' | 'academic' | 'hobby'
+                  })}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                >
+                  <option value="professional">Professional</option>
+                  <option value="academic">Academic</option>
+                  <option value="personal">Personal</option>
+                  <option value="hobby">Hobby</option>
+                </select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleAddAccomplishment}>Add Accomplishment</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={showExperienceDialog} onOpenChange={setShowExperienceDialog}>
           <DialogContent>

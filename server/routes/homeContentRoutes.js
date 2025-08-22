@@ -166,9 +166,11 @@ router.post('/upload-profile-image', auth, upload.single('profileImage'), async 
 router.get('/', auth, async (req, res) => {
   console.log('HomeContentRoutes: GET / - Get home content request received');
   console.log('HomeContentRoutes: User ID:', req.user?.id);
+  console.log('HomeContentRoutes: Request headers:', req.headers);
 
   try {
     const homeContent = await HomeContentService.getHomeContentByUserId(req.user.id);
+    console.log('HomeContentRoutes: HomeContent service result:', homeContent);
 
     if (!homeContent) {
       console.log('HomeContentRoutes: No home content found, returning default');
@@ -177,6 +179,7 @@ router.get('/', auth, async (req, res) => {
           name: req.user.name || 'Your Name',
           tagline: 'Your professional tagline here',
           bio: 'Tell your story here...',
+          headerText: 'Stellar Codex',
           profileImageUrl: null,
           yearsExperience: 0,
           coreExpertise: [],
@@ -197,9 +200,11 @@ router.get('/', auth, async (req, res) => {
     }
 
     console.log('HomeContentRoutes: Home content retrieved successfully');
+    console.log('HomeContentRoutes: Sending response:', homeContent);
     res.json({ homeContent });
   } catch (error) {
     console.error('HomeContentRoutes: Error fetching home content:', error);
+    console.error('HomeContentRoutes: Error stack:', error.stack);
     res.status(500).json({ error: 'Failed to fetch home content' });
   }
 });
@@ -233,6 +238,7 @@ router.put('/', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('HomeContentRoutes: Error updating home content:', error);
+    console.error('HomeContentRoutes: Error stack:', error.stack);
     res.status(500).json({ error: 'Failed to update home content' });
   }
 });

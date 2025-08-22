@@ -53,7 +53,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
   };
 
   const formatStatus = (status: string) => {
-    return status.split('-').map(word => 
+    return status.split('-').map(word =>
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
   };
@@ -66,7 +66,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
   };
 
   return (
-    <Card 
+    <Card
       className={`cursor-pointer transition-all duration-200 hover:shadow-lg border border-gray-200 hover:border-gray-300 ${
         isDragging ? 'opacity-50 rotate-2' : ''
       }`}
@@ -79,7 +79,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
             src={getImageUrl(project.thumbnailUrl || project.imageUrl)}
             alt={project.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            style={{ 
+            style={{
               height: '160px',
               objectFit: 'cover'
             }}
@@ -99,15 +99,15 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
           <CardTitle className="text-base font-semibold line-clamp-2 flex-1 pr-2">
             {project.title}
           </CardTitle>
-          <Badge 
-            variant="outline" 
+          <Badge
+            variant="outline"
             className={`ml-2 text-xs ${getStatusColor(project.status)}`}
           >
             {formatStatus(project.status)}
           </Badge>
         </div>
       </CardHeader>
-      
+
       <CardContent className="space-y-3 px-3 pb-3">
         <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
           {project.shortDescription || project.description}
@@ -116,12 +116,9 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
         {/* Energy Level with Emoji (renamed from enthusiasm) */}
         {project.enthusiasmLevel && (
           <div className="flex items-center gap-2">
-            <span className="text-base">
-              {energyEmojis[project.enthusiasmLevel]}
+            <span className="text-sm font-medium">
+              Energy: {energyEmojis[project.enthusiasmLevel]}
             </span>
-            <Badge variant="outline" className="text-xs">
-              Energy: {project.enthusiasmLevel}
-            </Badge>
           </div>
         )}
 
@@ -153,7 +150,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
             </Badge>
           )}
         </div>
-        
+
         <div className="flex gap-1 pt-1">
           {project.liveUrl && (
             <Button
@@ -167,7 +164,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
               <span className="text-blue-600 font-medium">Demo</span>
             </Button>
           )}
-          
+
           {project.githubUrl && (
             <Button
               size="sm"
@@ -180,7 +177,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
               <span className="text-gray-700 font-medium">Code</span>
             </Button>
           )}
-          
+
           {project.paperUrl && (
             <Button
               size="sm"

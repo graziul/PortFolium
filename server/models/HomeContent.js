@@ -18,6 +18,11 @@ const homeContentSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  headerText: {
+    type: String,
+    default: 'Chronos Archive',
+    trim: true
+  },
   profileImageUrl: {
     type: String,
     trim: true

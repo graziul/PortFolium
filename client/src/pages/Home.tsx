@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { getProjects, Project } from '@/api/projects';
 import { getBlogPosts, BlogPost } from '@/api/blog';
-import { getSkills, Skill } from '@/api/skills';
+import { getFeaturedSkills, Skill } from '@/api/skills';
 import { getHomeContent, HomeContent } from '@/api/homeContent';
 import { HomeContentForm } from '@/components/HomeContentForm';
 import { useToast } from '@/hooks/useToast';
@@ -18,6 +18,7 @@ export function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [featuredSkills, setFeaturedSkills] = useState<Skill[]>([]);
   const [homeContent, setHomeContent] = useState<HomeContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [hoveredCollabCard, setHoveredCollabCard] = useState<string | null>(null);
@@ -31,15 +32,15 @@ export function Home() {
         console.log('Home: Fetching home page data...');
 
         // Fetch projects, blog posts, and skills first (these work)
-        const [projectsResponse, blogResponse, skillsResponse] = await Promise.all([
+        const [projectsResponse, blogResponse, featuredSkillsResponse] = await Promise.all([
           getProjects(),
           getBlogPosts(),
-          getSkills()
+          getFeaturedSkills()
         ]);
 
         setProjects((projectsResponse as any).projects);
         setBlogPosts((blogResponse as any).posts.slice(0, 2));
-        setSkills((skillsResponse as any).skills);
+        setFeaturedSkills((featuredSkillsResponse as any).skills);
 
         // Try to fetch home content, but don't fail if it doesn't exist
         try {
@@ -52,6 +53,7 @@ export function Home() {
             name: 'Your Name',
             tagline: 'Your professional tagline here',
             bio: 'Tell your professional story here...',
+            headerText: 'Stellar Codex',
             yearsExperience: 0,
             coreExpertise: [],
             socialLinks: {
@@ -79,7 +81,6 @@ export function Home() {
     fetchData();
   }, [toast]);
 
-  const topSkills = skills.filter(s => s.experienceLevel === 'expert' || s.experienceLevel === 'advanced').slice(0, 4);
   const completedProjects = projects.filter(p => p.status === 'completed').length;
   const inProgressProjects = projects.filter(p => p.status === 'in-progress').length;
 
@@ -118,6 +119,11 @@ export function Home() {
     navigate('/blog');
   };
 
+  const handleCoreExpertiseClick = (skillName: string) => {
+    // Navigate to skills page and try to highlight the skill
+    navigate('/skills', { state: { highlightSkill: skillName } });
+  };
+
   const handleEditSuccess = async () => {
     setShowEditDialog(false);
     // Refresh home content
@@ -144,6 +150,11 @@ export function Home() {
   const totalCollaborators = homeContent?.collaboratorStats ?
     Object.values(homeContent.collaboratorStats).reduce((sum, category) => sum + category.total, 0) : 0;
 
+  // Use coreExpertise from homeContent if available, otherwise fall back to featured skills
+  const displayedExpertise = homeContent?.coreExpertise && homeContent.coreExpertise.length > 0
+    ? homeContent.coreExpertise
+    : featuredSkills.slice(0, 4).map(skill => skill.name);
+
   return (
     <div className="space-y-16">
       {/* Hero Section - Two Column Layout */}
@@ -162,9 +173,6 @@ export function Home() {
               transition={{ delay: 0.2, duration: 0.6 }}
             >
               <div className="flex items-center gap-4 mb-4">
-                <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  {homeContent?.name || 'Your Name'}
-                </h1>
                 <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
                   <DialogTrigger asChild>
                     <Button variant="ghost" size="sm" className="opacity-70 hover:opacity-100">
@@ -179,6 +187,7 @@ export function Home() {
                   </DialogContent>
                 </Dialog>
               </div>
+              <h2 className="text-3xl font-bold mb-2">{homeContent?.name || 'Your Name'}</h2>
               <p className="text-xl text-muted-foreground mb-6">
                 {homeContent?.tagline || 'Your professional tagline here'}
               </p>
@@ -227,21 +236,18 @@ export function Home() {
               />
             </div>
 
-            {/* Top Skills Preview */}
+            {/* Core Expertise Preview - Now clickable and draws from skills */}
             <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm rounded-xl p-6 border border-white/40">
               <h3 className="text-lg font-semibold mb-4">Core Expertise</h3>
               <div className="grid grid-cols-2 gap-3">
-                {homeContent?.coreExpertise?.slice(0, 4).map((expertise, index) => (
-                  <div key={index} className="flex items-center gap-2">
+                {displayedExpertise.slice(0, 4).map((expertise, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-2 cursor-pointer hover:bg-white/40 dark:hover:bg-gray-800/40 p-2 rounded-lg transition-colors"
+                    onClick={() => handleCoreExpertiseClick(expertise)}
+                  >
                     <div className="w-2 h-2 rounded-full bg-green-500" />
-                    <span className="text-sm font-medium">{expertise}</span>
-                  </div>
-                )) || topSkills.map((skill) => (
-                  <div key={skill._id} className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${
-                      skill.experienceLevel === 'expert' ? 'bg-green-500' : 'bg-blue-500'
-                    }`} />
-                    <span className="text-sm font-medium">{skill.name}</span>
+                    <span className="text-sm font-medium hover:text-primary transition-colors">{expertise}</span>
                   </div>
                 ))}
               </div>
@@ -319,7 +325,7 @@ export function Home() {
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold mb-4">Interdisciplinary Collaboration</h2>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            {homeContent?.bio || 'Bridging disciplines through collaborative partnerships with academic institutions, industry researchers, and innovative teams'}
+            Bridging disciplines through collaborative partnerships with academic institutions, industry researchers, and innovative teams
           </p>
         </div>
 

@@ -4,13 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
-import { 
-  Plus, 
-  Search, 
-  Calendar, 
-  Clock, 
-  Eye, 
-  Edit, 
+import {
+  Plus,
+  Search,
+  Calendar,
+  Clock,
+  Eye,
+  Edit,
   Trash2,
   Filter,
   X
@@ -33,7 +33,7 @@ interface BlogPost {
 
 export function Blog() {
   console.log('Blog Component: Rendering...');
-  
+
   const navigate = useNavigate();
   const { toast } = useToast();
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -126,6 +126,11 @@ export function Blog() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleBlogPostClick = (postId: string) => {
+    console.log('Blog Component: Navigating to blog post:', postId);
+    navigate(`/blog/${postId}`);
   };
 
   const getAllTags = () => {
@@ -228,7 +233,7 @@ export function Blog() {
             {posts.length === 0 ? 'No blog posts yet' : 'No posts match your search'}
           </h2>
           <p className="text-gray-600 mb-6">
-            {posts.length === 0 
+            {posts.length === 0
               ? 'Create your first blog post to get started.'
               : 'Try adjusting your search terms or filters.'
             }
@@ -243,7 +248,11 @@ export function Blog() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredPosts.map((post) => (
-            <Card key={post._id} className="hover:shadow-lg transition-shadow cursor-pointer">
+            <Card
+              key={post._id}
+              className="hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => handleBlogPostClick(post._id)}
+            >
               {/* Featured Image */}
               {post.featuredImage && (
                 <div className="aspect-video overflow-hidden rounded-t-lg">
@@ -251,7 +260,6 @@ export function Blog() {
                     src={post.featuredImage}
                     alt={post.title}
                     className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                    onClick={() => navigate(`/blog/${post._id}`)}
                     onLoad={() => {
                       console.log('Blog Component: Post image loaded:', post.featuredImage);
                     }}
@@ -265,13 +273,10 @@ export function Blog() {
 
               <CardHeader>
                 <div className="flex justify-between items-start">
-                  <CardTitle 
-                    className="text-lg font-semibold line-clamp-2 cursor-pointer hover:text-blue-600"
-                    onClick={() => navigate(`/blog/${post._id}`)}
-                  >
+                  <CardTitle className="text-lg font-semibold line-clamp-2 cursor-pointer hover:text-blue-600">
                     {post.title}
                   </CardTitle>
-                  
+
                   <div className="flex gap-1 ml-2">
                     <Button
                       size="sm"
@@ -350,7 +355,10 @@ export function Blog() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => navigate(`/blog/${post._id}`)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/blog/${post._id}`);
+                  }}
                   className="w-full"
                 >
                   Read More

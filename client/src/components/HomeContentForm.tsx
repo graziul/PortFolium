@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { X, Upload, User, Plus, Trash2 } from 'lucide-react';
 import { getHomeContent, updateHomeContent, uploadProfileImage, getCollaborators, HomeContent, Collaborator } from '@/api/homeContent';
+import { getSkills } from '@/api/skills';
 import { useToast } from '@/hooks/useToast';
 
 interface HomeContentFormProps {
@@ -32,10 +33,12 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [skills, setSkills] = useState<any[]>([]);
   const [formData, setFormData] = useState<Partial<HomeContent>>({
     name: '',
     tagline: '',
     bio: '',
+    headerText: 'Stellar Codex',
     profileImageUrl: '',
     yearsExperience: 0,
     coreExpertise: [],
@@ -47,7 +50,6 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
     }
   });
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
-  const [newExpertise, setNewExpertise] = useState('');
   const [newCollaborator, setNewCollaborator] = useState<Collaborator>({
     name: '',
     type: 'postdoc'
@@ -59,9 +61,9 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
 
   const loadData = async () => {
     try {
-      console.log('HomeContentForm: Loading home content and collaborators...');
-      
-      const [homeContentResponse, collaboratorsResponse] = await Promise.all([
+      console.log('HomeContentForm: Loading home content, collaborators, and skills...');
+
+      const [homeContentResponse, collaboratorsResponse, skillsResponse] = await Promise.all([
         getHomeContent().catch(error => {
           console.log('HomeContentForm: Home content not found, using defaults');
           return {
@@ -69,6 +71,7 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
               name: '',
               tagline: '',
               bio: '',
+              headerText: 'Stellar Codex',
               profileImageUrl: '',
               yearsExperience: 0,
               coreExpertise: [],
@@ -84,11 +87,16 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
         getCollaborators().catch(error => {
           console.log('HomeContentForm: Collaborators not found, using empty array');
           return { collaborators: [] };
+        }),
+        getSkills().catch(error => {
+          console.log('HomeContentForm: Skills not found, using empty array');
+          return { skills: [] };
         })
       ]);
 
       setFormData(homeContentResponse.homeContent);
       setCollaborators(collaboratorsResponse.collaborators);
+      setSkills(skillsResponse.skills || []);
       console.log('HomeContentForm: Data loaded successfully');
     } catch (error) {
       console.error('HomeContentForm: Error loading data:', error);
@@ -118,14 +126,13 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
     }
   };
 
-  const addExpertise = () => {
-    if (newExpertise.trim() && !formData.coreExpertise?.includes(newExpertise.trim())) {
+  const addSkillAsExpertise = (skillName: string) => {
+    if (!formData.coreExpertise?.includes(skillName)) {
       setFormData(prev => ({
         ...prev,
-        coreExpertise: [...(prev.coreExpertise || []), newExpertise.trim()]
+        coreExpertise: [...(prev.coreExpertise || []), skillName]
       }));
-      setNewExpertise('');
-      console.log('HomeContentForm: Added expertise:', newExpertise.trim());
+      console.log('HomeContentForm: Added skill as expertise:', skillName);
     }
   };
 
@@ -302,6 +309,16 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="headerText">Site Header Text</Label>
+            <Input
+              id="headerText"
+              value={formData.headerText || ''}
+              onChange={(e) => handleInputChange('headerText', e.target.value)}
+              placeholder="Stellar Codex"
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="bio">Bio *</Label>
             <Textarea
               id="bio"
@@ -313,25 +330,36 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
             />
           </div>
 
-          {/* Core Expertise */}
+          {/* Core Expertise - Only allow selection from existing skills */}
           <div className="space-y-2">
             <Label>Core Expertise</Label>
-            <div className="flex gap-2">
-              <Input
-                value={newExpertise}
-                onChange={(e) => setNewExpertise(e.target.value)}
-                placeholder="Add an area of expertise"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addExpertise();
-                  }
-                }}
-              />
-              <Button type="button" onClick={addExpertise} variant="outline">
-                Add
-              </Button>
-            </div>
+            <p className="text-sm text-gray-600">Select from your existing skills to highlight as core expertise:</p>
+            
+            {/* Skills Selection */}
+            {skills.length > 0 ? (
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  {skills
+                    .filter(skill => !formData.coreExpertise?.includes(skill.name))
+                    .map((skill) => (
+                    <Button
+                      key={skill._id}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addSkillAsExpertise(skill.name)}
+                      className="text-xs"
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      {skill.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No skills available. Please add skills on the Skills page first.</p>
+            )}
+
             {formData.coreExpertise && formData.coreExpertise.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
                 {formData.coreExpertise.map((expertise, index) => (

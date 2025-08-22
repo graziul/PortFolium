@@ -45,6 +45,14 @@ const skillSchema = new mongoose.Schema({
   lastUsed: {
     type: Date,
     default: Date.now
+  },
+  featured: {
+    type: Boolean,
+    default: false
+  },
+  displayOrder: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true
@@ -53,6 +61,7 @@ const skillSchema = new mongoose.Schema({
 // Index for efficient queries
 skillSchema.index({ userId: 1, category: 1 });
 skillSchema.index({ userId: 1, experienceLevel: 1 });
+skillSchema.index({ userId: 1, featured: 1, displayOrder: 1 });
 skillSchema.index({ name: 'text', description: 'text' });
 
 const Skill = mongoose.model('Skill', skillSchema);

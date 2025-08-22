@@ -1,72 +1,77 @@
 const mongoose = require('mongoose');
-const { validatePassword } = require('../utils/password');
+const bcrypt = require('bcryptjs');
 
 console.log('User Model: Loading User schema...');
 
 const userSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
   email: {
     type: String,
     required: true,
     unique: true,
-    trim: true,
     lowercase: true,
-    validate: {
-      validator: function(email) {
-        return /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(email);
-      },
-      message: 'Please enter a valid email address'
-    }
+    trim: true
   },
   password: {
     type: String,
     required: true,
-    minlength: 6,
-    validate: {
-      validator: function(password) {
-        const validation = validatePassword(password);
-        return validation.isValid;
-      },
-      message: 'Password must be at least 8 characters long and contain uppercase, lowercase, number, and special character'
-    }
-  },
-  name: {
-    type: String,
-    required: true,
-    trim: true,
-    maxlength: 50
+    minlength: 6
   },
   bio: {
     type: String,
-    trim: true,
-    maxlength: 500
+    default: ''
   },
   location: {
     type: String,
-    trim: true,
-    maxlength: 100
+    default: ''
   },
   phone: {
     type: String,
-    trim: true
+    default: ''
   },
   socialLinks: {
     linkedin: {
       type: String,
-      trim: true
+      default: ''
     },
     github: {
       type: String,
-      trim: true
+      default: ''
     },
     twitter: {
       type: String,
-      trim: true
+      default: ''
     },
     website: {
       type: String,
-      trim: true
+      default: ''
     }
   },
+  accomplishments: [{
+    title: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    description: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    date: {
+      type: Date,
+      default: Date.now
+    },
+    category: {
+      type: String,
+      enum: ['professional', 'personal', 'academic', 'hobby'],
+      default: 'professional'
+    }
+  }],
   experiences: [{
     title: {
       type: String,
@@ -80,7 +85,7 @@ const userSchema = new mongoose.Schema({
     },
     location: {
       type: String,
-      trim: true
+      default: ''
     },
     startDate: {
       type: Date,
@@ -95,7 +100,7 @@ const userSchema = new mongoose.Schema({
     },
     description: {
       type: String,
-      trim: true
+      default: ''
     },
     achievements: [{
       type: String,
@@ -103,23 +108,19 @@ const userSchema = new mongoose.Schema({
     }]
   }],
   education: [{
-    institution: {
-      type: String,
-      required: true,
-      trim: true
-    },
     degree: {
       type: String,
       required: true,
       trim: true
     },
-    field: {
+    institution: {
       type: String,
+      required: true,
       trim: true
     },
     location: {
       type: String,
-      trim: true
+      default: ''
     },
     startDate: {
       type: Date,
@@ -128,34 +129,15 @@ const userSchema = new mongoose.Schema({
     endDate: {
       type: Date
     },
-    current: {
-      type: Boolean,
-      default: false
-    },
     gpa: {
       type: String,
-      trim: true
+      default: ''
     },
     description: {
       type: String,
-      trim: true
+      default: ''
     }
-  }],
-  certifications: [{
-    type: String,
-    trim: true
-  }],
-  languages: [{
-    type: String,
-    trim: true
-  }],
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  lastLoginAt: {
-    type: Date
-  }
+  }]
 }, {
   timestamps: true
 });
@@ -163,17 +145,13 @@ const userSchema = new mongoose.Schema({
 // Index for efficient queries
 userSchema.index({ email: 1 });
 
-// Transform output to remove password and add id
+// Transform function to remove password from JSON output
 userSchema.methods.toJSON = function() {
   const user = this.toObject();
   delete user.password;
-  user.id = user._id;
   return user;
 };
 
-console.log('User Model: Schema created successfully');
-
 const User = mongoose.model('User', userSchema);
 
-console.log('User Model: Model exported successfully');
 module.exports = User;

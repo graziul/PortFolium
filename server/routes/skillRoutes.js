@@ -5,6 +5,39 @@ const SkillService = require('../services/skillService');
 
 console.log('SkillRoutes: Module loading...');
 
+// Migration endpoint to update skill categories
+router.post('/migrate-categories', auth, async (req, res) => {
+  console.log('SkillRoutes: POST /migrate-categories - Migrate skill categories request received');
+  console.log('SkillRoutes: User ID:', req.user?.id);
+
+  try {
+    const categoryMapping = {
+      // Old categories -> New categories
+      'Frontend Frameworks': 'Technical',
+      'Backend Technologies': 'Technical',
+      'Programming Languages': 'Technical',
+      'Design Tools': 'Technical',
+      'Mobile': 'Technical',
+      'Databases': 'Technical',
+      'AI/Data Science': 'Data Science & Analytics',
+      'DevOps': 'Software & Tools',
+      'Strategic Leadership': 'Leadership & Collaboration'
+    };
+
+    const migrationResults = await SkillService.migrateCategoriesForUser(req.user.id, categoryMapping);
+    console.log('SkillRoutes: Categories migrated successfully:', migrationResults);
+
+    res.json({
+      message: 'Skill categories migrated successfully',
+      updated: migrationResults.updated,
+      total: migrationResults.total
+    });
+  } catch (error) {
+    console.error('SkillRoutes: Error migrating skill categories:', error);
+    res.status(500).json({ error: 'Failed to migrate skill categories' });
+  }
+});
+
 // Get skill categories
 router.get('/categories', auth, async (req, res) => {
   console.log('SkillRoutes: GET /categories - Get skill categories request received');
@@ -17,6 +50,21 @@ router.get('/categories', auth, async (req, res) => {
   } catch (error) {
     console.error('SkillRoutes: Error fetching skill categories:', error);
     res.status(500).json({ error: 'Failed to fetch skill categories' });
+  }
+});
+
+// Get featured skills for home page
+router.get('/featured', auth, async (req, res) => {
+  console.log('SkillRoutes: GET /featured - Get featured skills request received');
+  console.log('SkillRoutes: User ID:', req.user?.id);
+
+  try {
+    const skills = await SkillService.getFeaturedSkillsByUserId(req.user.id);
+    console.log('SkillRoutes: Featured skills retrieved:', skills.length, 'skills');
+    res.json({ skills });
+  } catch (error) {
+    console.error('SkillRoutes: Error fetching featured skills:', error);
+    res.status(500).json({ error: 'Failed to fetch featured skills' });
   }
 });
 

@@ -12,6 +12,8 @@ export interface Skill {
   relatedSkills?: string[];
   certifications?: string[];
   lastUsed?: string;
+  featured?: boolean;
+  displayOrder?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -21,14 +23,29 @@ export interface Skill {
 // Request: {}
 // Response: { skills: Skill[] }
 export const getSkills = async () => {
-  console.log('SkillsAPI: getSkills called');
-
   try {
+    console.log('Skills API: Fetching all skills...');
     const response = await api.get('/api/skills');
-    console.log('SkillsAPI: getSkills response:', response.data);
+    console.log('Skills API: Skills fetched successfully:', response.data.skills?.length || 0);
     return response.data;
   } catch (error) {
-    console.error('SkillsAPI: getSkills error:', error);
+    console.error('Skills API: Error fetching skills:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Get featured skills for home page
+// Endpoint: GET /api/skills/featured
+// Request: {}
+// Response: { skills: Skill[] }
+export const getFeaturedSkills = async () => {
+  try {
+    console.log('Skills API: Fetching featured skills...');
+    const response = await api.get('/api/skills/featured');
+    console.log('Skills API: Featured skills fetched successfully:', response.data.skills?.length || 0);
+    return response.data;
+  } catch (error) {
+    console.error('Skills API: Error fetching featured skills:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
@@ -38,48 +55,45 @@ export const getSkills = async () => {
 // Request: {}
 // Response: { categories: string[] }
 export const getSkillCategories = async () => {
-  console.log('SkillsAPI: getSkillCategories called');
-
   try {
+    console.log('Skills API: Fetching skill categories...');
     const response = await api.get('/api/skills/categories');
-    console.log('SkillsAPI: getSkillCategories response:', response.data);
+    console.log('Skills API: Categories fetched successfully:', response.data.categories?.length || 0);
     return response.data;
   } catch (error) {
-    console.error('SkillsAPI: getSkillCategories error:', error);
+    console.error('Skills API: Error fetching categories:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
 
 // Description: Create a new skill
 // Endpoint: POST /api/skills
-// Request: { name: string, category: string, experienceLevel: string, yearsOfExperience: number }
+// Request: { name: string, category: string, experienceLevel: string, yearsOfExperience: number, description?: string, relatedSkills?: string[], certifications?: string[], featured?: boolean, displayOrder?: number }
 // Response: { skill: Skill, message: string }
-export const createSkill = async (skillData: Omit<Skill, '_id' | 'userId' | 'projects' | 'createdAt' | 'updatedAt'>) => {
-  console.log('SkillsAPI: createSkill called with data:', skillData);
-
+export const createSkill = async (skillData: Partial<Skill>) => {
   try {
+    console.log('Skills API: Creating new skill:', skillData.name);
     const response = await api.post('/api/skills', skillData);
-    console.log('SkillsAPI: createSkill response:', response.data);
+    console.log('Skills API: Skill created successfully:', response.data.skill?._id);
     return response.data;
   } catch (error) {
-    console.error('SkillsAPI: createSkill error:', error);
+    console.error('Skills API: Error creating skill:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
 
 // Description: Update an existing skill
 // Endpoint: PUT /api/skills/:id
-// Request: { name?: string, category?: string, experienceLevel?: string, yearsOfExperience?: number }
+// Request: { name?: string, category?: string, experienceLevel?: string, yearsOfExperience?: number, description?: string, relatedSkills?: string[], certifications?: string[], featured?: boolean, displayOrder?: number }
 // Response: { skill: Skill, message: string }
-export const updateSkill = async (id: string, skillData: Partial<Omit<Skill, '_id' | 'userId' | 'projects' | 'createdAt' | 'updatedAt'>>) => {
-  console.log('SkillsAPI: updateSkill called with id:', id, 'data:', skillData);
-
+export const updateSkill = async (id: string, skillData: Partial<Skill>) => {
   try {
+    console.log('Skills API: Updating skill:', id, skillData);
     const response = await api.put(`/api/skills/${id}`, skillData);
-    console.log('SkillsAPI: updateSkill response:', response.data);
+    console.log('Skills API: Skill updated successfully:', response.data.skill?.name);
     return response.data;
   } catch (error) {
-    console.error('SkillsAPI: updateSkill error:', error);
+    console.error('Skills API: Error updating skill:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
@@ -89,14 +103,13 @@ export const updateSkill = async (id: string, skillData: Partial<Omit<Skill, '_i
 // Request: {}
 // Response: { message: string }
 export const deleteSkill = async (id: string) => {
-  console.log('SkillsAPI: deleteSkill called with id:', id);
-
   try {
+    console.log('Skills API: Deleting skill:', id);
     const response = await api.delete(`/api/skills/${id}`);
-    console.log('SkillsAPI: deleteSkill response:', response.data);
+    console.log('Skills API: Skill deleted successfully');
     return response.data;
   } catch (error) {
-    console.error('SkillsAPI: deleteSkill error:', error);
+    console.error('Skills API: Error deleting skill:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
