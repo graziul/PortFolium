@@ -14,6 +14,7 @@ import { ProjectDetail } from "./pages/ProjectDetail"
 import { ProjectForm } from "./pages/ProjectForm"
 import { Blog } from "./pages/Blog"
 import { BlogPostPage } from "./pages/BlogPost"
+import { BlogFormPage } from "./pages/BlogForm"
 import { Skills } from "./pages/Skills"
 import { About } from "./pages/About"
 import { Contact } from "./pages/Contact"
@@ -41,6 +42,8 @@ function App() {
               <Route path="projects/:id" element={<ProjectDetail />} />
               <Route path="project-tracker" element={<ProjectTracker />} />
               <Route path="blog" element={<Blog />} />
+              <Route path="blog/new" element={<BlogFormPage />} />
+              <Route path="blog/edit/:id" element={<BlogFormPage />} />
               <Route path="blog/:id" element={<BlogPostPage />} />
               <Route path="skills" element={<Skills />} />
               <Route path="about" element={<About />} />

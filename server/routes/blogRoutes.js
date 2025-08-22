@@ -28,11 +28,14 @@ const storage = multer.diskStorage({
       fs.mkdirSync(uploadPath, { recursive: true });
     }
 
+    console.log('Blog Routes: Upload destination set to:', uploadPath);
     cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'blog-' + uniqueSuffix + path.extname(file.originalname));
+    const filename = 'blog-' + uniqueSuffix + path.extname(file.originalname);
+    console.log('Blog Routes: Generated filename:', filename);
+    cb(null, filename);
   }
 });
 
@@ -42,14 +45,14 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
   fileFilter: function (req, file, cb) {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const allowedTypes = /jpeg|jpg|png|gif|webp|svg/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
+    const mimetype = allowedTypes.test(file.mimetype) || file.mimetype === 'image/svg+xml';
 
     if (mimetype && extname) {
       return cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'));
+      cb(new Error('Only image files are allowed (JPEG, JPG, PNG, GIF, WebP, SVG)'));
     }
   }
 });
@@ -57,10 +60,17 @@ const upload = multer({
 // Upload blog post image
 router.post('/upload-image', auth, upload.single('image'), async (req, res) => {
   console.log('Blog Routes: ===== POST /api/blog-posts/upload-image ROUTE CALLED =====');
-  
+
   try {
     console.log('Blog Routes: Image upload request received');
-    console.log('File:', req.file);
+    console.log('Blog Routes: File details:', {
+      originalname: req.file?.originalname,
+      mimetype: req.file?.mimetype,
+      size: req.file?.size,
+      filename: req.file?.filename,
+      path: req.file?.path,
+      destination: req.file?.destination
+    });
 
     if (!req.file) {
       console.log('Blog Routes: No file uploaded');
@@ -68,7 +78,37 @@ router.post('/upload-image', auth, upload.single('image'), async (req, res) => {
     }
 
     const imageUrl = `/uploads/blog/${req.file.filename}`;
-    console.log('Blog Routes: Image uploaded:', imageUrl);
+    console.log('Blog Routes: Image uploaded successfully');
+    console.log('Blog Routes: Generated image URL:', imageUrl);
+    console.log('Blog Routes: Full file path on disk:', req.file.path);
+    console.log('Blog Routes: File destination:', req.file.destination);
+    console.log('Blog Routes: Current working directory:', process.cwd());
+    console.log('Blog Routes: __dirname:', __dirname);
+
+    // Verify file exists and get detailed info
+    const fs = require('fs');
+    const path = require('path');
+    const fileExists = fs.existsSync(req.file.path);
+    console.log('Blog Routes: File exists on disk:', fileExists);
+
+    if (fileExists) {
+      const stats = fs.statSync(req.file.path);
+      console.log('Blog Routes: File size on disk:', stats.size, 'bytes');
+      console.log('Blog Routes: File extension:', path.extname(req.file.filename));
+      
+      // Test if the file can be read
+      try {
+        const fileContent = fs.readFileSync(req.file.path);
+        console.log('Blog Routes: File is readable, first 100 bytes:', fileContent.slice(0, 100).toString());
+      } catch (readError) {
+        console.error('Blog Routes: Error reading file:', readError);
+      }
+    }
+
+    // Test the URL that will be served
+    const expectedServePath = path.join(__dirname, '../../uploads/blog', req.file.filename);
+    console.log('Blog Routes: Expected serve path:', expectedServePath);
+    console.log('Blog Routes: Expected serve path exists:', fs.existsSync(expectedServePath));
 
     res.json({
       success: true,
@@ -80,8 +120,8 @@ router.post('/upload-image', auth, upload.single('image'), async (req, res) => {
     console.error('Blog Routes: Error:', error);
     console.error('Blog Routes: Error stack:', error.stack);
     console.error('Blog Routes: ===== END ERROR LOG =====');
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       error: 'Failed to upload image',
       details: error.message
     });
@@ -178,7 +218,11 @@ router.post('/', auth, async (req, res) => {
   try {
     const postData = {
       ...req.body,
-      userId: req.user.id
+      userId: req.user.id,
+      author: {
+        name: req.user.name || req.user.email || 'Anonymous',
+        avatar: req.user.avatar || 'https://via.placeholder.com/40x40'
+      }
     };
 
     const post = await BlogService.createPost(postData);

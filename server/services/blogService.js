@@ -35,7 +35,27 @@ class BlogService {
       console.log('BlogService: BlogPost.find completed successfully');
       console.log('BlogService: Found', posts.length, 'blog posts');
 
-      return posts;
+      // Transform posts to match frontend expectations
+      const transformedPosts = posts.map(post => ({
+        _id: post._id,
+        title: post.title,
+        content: post.content,
+        excerpt: post.excerpt,
+        featuredImage: post.featuredImage || '', // Don't use placeholder
+        tags: post.tags || [],
+        category: post.category,
+        publishedAt: post.publishedAt || post.createdAt,
+        updatedAt: post.updatedAt,
+        userId: post.userId,
+        status: post.published ? 'published' : 'draft',
+        readingTime: post.readTime || 1,
+        author: post.author || {
+          name: 'Anonymous',
+          avatar: 'https://via.placeholder.com/40x40'
+        }
+      }));
+
+      return transformedPosts;
     } catch (error) {
       console.error('BlogService: ===== ERROR IN getPostsByUser =====');
       console.error('BlogService: Error type:', error.constructor.name);
@@ -55,7 +75,32 @@ class BlogService {
     try {
       const post = await BlogPost.findOne({ _id: postId, userId });
       console.log('BlogService: Blog post found:', !!post);
-      return post;
+      
+      if (!post) {
+        return null;
+      }
+
+      // Transform post to match frontend expectations
+      const transformedPost = {
+        _id: post._id,
+        title: post.title,
+        content: post.content,
+        excerpt: post.excerpt,
+        featuredImage: post.featuredImage || 'https://via.placeholder.com/800x400',
+        tags: post.tags || [],
+        category: post.category,
+        publishedAt: post.publishedAt || post.createdAt,
+        updatedAt: post.updatedAt,
+        userId: post.userId,
+        status: post.published ? 'published' : 'draft',
+        readingTime: post.readTime || 1,
+        author: post.author || {
+          name: 'Anonymous',
+          avatar: 'https://via.placeholder.com/40x40'
+        }
+      };
+
+      return transformedPost;
     } catch (error) {
       console.error('BlogService: ===== ERROR IN getPostById =====');
       console.error('BlogService: Error:', error);
@@ -76,15 +121,47 @@ class BlogService {
       const readTime = Math.max(1, Math.ceil(wordCount / 200));
 
       const blogPostData = {
-        ...postData,
+        title: postData.title,
+        content: postData.content,
+        excerpt: postData.excerpt,
+        featuredImage: postData.featuredImage || '',
+        tags: postData.tags || [],
+        category: postData.category,
         readTime,
-        publishedAt: postData.published ? new Date() : null
+        published: postData.status === 'published',
+        publishedAt: postData.status === 'published' ? new Date() : null,
+        userId: postData.userId,
+        author: postData.author || {
+          name: 'Anonymous',
+          avatar: 'https://via.placeholder.com/40x40'
+        }
       };
 
       const post = new BlogPost(blogPostData);
       await post.save();
       console.log('BlogService: Blog post created successfully:', post._id);
-      return post;
+
+      // Transform post to match frontend expectations
+      const transformedPost = {
+        _id: post._id,
+        title: post.title,
+        content: post.content,
+        excerpt: post.excerpt,
+        featuredImage: post.featuredImage || 'https://via.placeholder.com/400x200',
+        tags: post.tags || [],
+        category: post.category,
+        publishedAt: post.publishedAt || post.createdAt,
+        updatedAt: post.updatedAt,
+        userId: post.userId,
+        status: post.published ? 'published' : 'draft',
+        readingTime: post.readTime || 1,
+        author: post.author || {
+          name: 'Anonymous',
+          avatar: 'https://via.placeholder.com/40x40'
+        }
+      };
+
+      return transformedPost;
     } catch (error) {
       console.error('BlogService: ===== ERROR IN createPost =====');
       console.error('BlogService: Error:', error);
@@ -107,8 +184,13 @@ class BlogService {
       }
 
       // Update published date if publishing for the first time
-      if (updateData.published && !updateData.publishedAt) {
-        updateData.publishedAt = new Date();
+      if (updateData.status === 'published') {
+        updateData.published = true;
+        if (!updateData.publishedAt) {
+          updateData.publishedAt = new Date();
+        }
+      } else if (updateData.status === 'draft') {
+        updateData.published = false;
       }
 
       const post = await BlogPost.findOneAndUpdate(
@@ -117,7 +199,32 @@ class BlogService {
         { new: true, runValidators: true }
       );
       console.log('BlogService: Blog post updated:', !!post);
-      return post;
+
+      if (!post) {
+        return null;
+      }
+
+      // Transform post to match frontend expectations
+      const transformedPost = {
+        _id: post._id,
+        title: post.title,
+        content: post.content,
+        excerpt: post.excerpt,
+        featuredImage: post.featuredImage || 'https://via.placeholder.com/400x200',
+        tags: post.tags || [],
+        category: post.category,
+        publishedAt: post.publishedAt || post.createdAt,
+        updatedAt: post.updatedAt,
+        userId: post.userId,
+        status: post.published ? 'published' : 'draft',
+        readingTime: post.readTime || 1,
+        author: post.author || {
+          name: 'Anonymous',
+          avatar: 'https://via.placeholder.com/40x40'
+        }
+      };
+
+      return transformedPost;
     } catch (error) {
       console.error('BlogService: ===== ERROR IN updatePost =====');
       console.error('BlogService: Error:', error);

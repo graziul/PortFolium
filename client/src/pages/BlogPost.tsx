@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Calendar, Clock, User, Share2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Share2, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { getBlogPost, BlogPost } from '@/api/blog';
+import { getBlogPost, deleteBlogPost, BlogPost } from '@/api/blog';
 import { useToast } from '@/hooks/useToast';
 
 export function BlogPostPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [post, setPost] = useState<BlogPost | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -19,15 +21,15 @@ export function BlogPostPage() {
       if (!id) return;
 
       try {
-        console.log('Fetching blog post:', id);
+        console.log('BlogPost: Fetching blog post:', id);
         const response = await getBlogPost(id);
-        setPost((response as any).post);
-        console.log('Blog post loaded successfully');
-      } catch (error) {
-        console.error('Error loading blog post:', error);
+        setPost(response.post);
+        console.log('BlogPost: Blog post loaded successfully');
+      } catch (error: any) {
+        console.error('BlogPost: Error loading blog post:', error);
         toast({
           title: "Error",
-          description: "Failed to load blog post. Please try again.",
+          description: error.message || "Failed to load blog post. Please try again.",
           variant: "destructive",
         });
       } finally {
@@ -37,6 +39,33 @@ export function BlogPostPage() {
 
     fetchPost();
   }, [id, toast]);
+
+  const handleDeletePost = async () => {
+    if (!post || !confirm(`Are you sure you want to delete "${post.title}"?`)) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      console.log('BlogPost: Deleting blog post:', post._id);
+      await deleteBlogPost(post._id);
+      console.log('BlogPost: Blog post deleted successfully');
+      toast({
+        title: "Success",
+        description: "Blog post deleted successfully",
+      });
+      navigate('/blog');
+    } catch (error: any) {
+      console.error('BlogPost: Error deleting blog post:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete blog post",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -84,20 +113,35 @@ export function BlogPostPage() {
         className="space-y-6"
       >
         <div className="aspect-video overflow-hidden rounded-2xl">
-          <img
-            src={post.featuredImage}
-            alt={post.title}
-            className="w-full h-full object-cover"
-          />
+          {post.featuredImage ? (
+            <img
+              src={`http://localhost:3000${post.featuredImage}`}
+              alt={post.title}
+              className="w-full h-full object-cover"
+              onLoad={() => console.log('BlogPost: Image loaded successfully:', `http://localhost:3000${post.featuredImage}`)}
+              onError={(e) => {
+                console.error('BlogPost: Image failed to load:', `http://localhost:3000${post.featuredImage}`);
+                console.error('BlogPost: Image error event:', e);
+                console.error('BlogPost: Image src attribute:', e.currentTarget.src);
+              }}
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center rounded-2xl">
+              <span className="text-gray-400 text-lg">No featured image</span>
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">
           <div className="flex items-center gap-4">
             <Badge variant="secondary">{post.category}</Badge>
+            <Badge variant={post.status === 'published' ? 'default' : 'outline'}>
+              {post.status}
+            </Badge>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
-                <span>{post.readTime} min read</span>
+                <span>{post.readingTime} min read</span>
               </div>
               <div className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
@@ -123,10 +167,31 @@ export function BlogPostPage() {
               </div>
             </div>
 
-            <Button variant="outline" size="sm">
-              <Share2 className="h-4 w-4 mr-2" />
-              Share
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm">
+                <Share2 className="h-4 w-4 mr-2" />
+                Share
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link to={`/blog/edit/${post._id}`}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDeletePost}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-2" />
+                )}
+                Delete
+              </Button>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -139,7 +204,7 @@ export function BlogPostPage() {
       >
         <Card className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-white/20">
           <CardContent className="p-8">
-            <div 
+            <div
               className="prose prose-lg dark:prose-invert max-w-none"
               dangerouslySetInnerHTML={{ __html: post.content.replace(/\n/g, '<br />') }}
             />
