@@ -49,6 +49,24 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  socialLinks: {
+    linkedin: {
+      type: String,
+      trim: true
+    },
+    github: {
+      type: String,
+      trim: true
+    },
+    twitter: {
+      type: String,
+      trim: true
+    },
+    website: {
+      type: String,
+      trim: true
+    }
+  },
   experiences: [{
     title: {
       type: String,
@@ -78,7 +96,11 @@ const userSchema = new mongoose.Schema({
     description: {
       type: String,
       trim: true
-    }
+    },
+    achievements: [{
+      type: String,
+      trim: true
+    }]
   }],
   education: [{
     institution: {
@@ -95,6 +117,10 @@ const userSchema = new mongoose.Schema({
       type: String,
       trim: true
     },
+    location: {
+      type: String,
+      trim: true
+    },
     startDate: {
       type: Date,
       required: true
@@ -106,11 +132,30 @@ const userSchema = new mongoose.Schema({
       type: Boolean,
       default: false
     },
+    gpa: {
+      type: String,
+      trim: true
+    },
     description: {
       type: String,
       trim: true
     }
-  }]
+  }],
+  certifications: [{
+    type: String,
+    trim: true
+  }],
+  languages: [{
+    type: String,
+    trim: true
+  }],
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  lastLoginAt: {
+    type: Date
+  }
 }, {
   timestamps: true
 });

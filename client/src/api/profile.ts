@@ -120,12 +120,12 @@ export const updateUserProfile = async (profileData: UpdateProfileData): Promise
 // Response: Experience
 export const addExperience = async (experienceData: Omit<Experience, 'id'>): Promise<Experience> => {
   try {
-    console.log('Adding experience...', experienceData);
+    console.log('Profile API: Adding experience...', experienceData);
     const response = await api.post('/api/users/profile/experience', experienceData);
-    console.log('Experience added successfully');
+    console.log('Profile API: Experience added successfully');
     return response.data;
   } catch (error: any) {
-    console.error('Error adding experience:', error);
+    console.error('Profile API: Error adding experience:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
@@ -136,12 +136,12 @@ export const addExperience = async (experienceData: Omit<Experience, 'id'>): Pro
 // Response: Experience
 export const updateExperience = async (experienceId: string, experienceData: Omit<Experience, 'id'>): Promise<Experience> => {
   try {
-    console.log('Updating experience...', experienceId, experienceData);
+    console.log('Profile API: Updating experience...', experienceId, experienceData);
     const response = await api.put(`/api/users/profile/experience/${experienceId}`, experienceData);
-    console.log('Experience updated successfully');
+    console.log('Profile API: Experience updated successfully');
     return response.data;
   } catch (error: any) {
-    console.error('Error updating experience:', error);
+    console.error('Profile API: Error updating experience:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
@@ -152,12 +152,12 @@ export const updateExperience = async (experienceId: string, experienceData: Omi
 // Response: { message: string }
 export const deleteExperience = async (experienceId: string): Promise<{ message: string }> => {
   try {
-    console.log('Deleting experience...', experienceId);
+    console.log('Profile API: Deleting experience...', experienceId);
     const response = await api.delete(`/api/users/profile/experience/${experienceId}`);
-    console.log('Experience deleted successfully');
+    console.log('Profile API: Experience deleted successfully');
     return response.data;
   } catch (error: any) {
-    console.error('Error deleting experience:', error);
+    console.error('Profile API: Error deleting experience:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
@@ -168,12 +168,12 @@ export const deleteExperience = async (experienceId: string): Promise<{ message:
 // Response: Education
 export const addEducation = async (educationData: Omit<Education, 'id'>): Promise<Education> => {
   try {
-    console.log('Adding education...', educationData);
+    console.log('Profile API: Adding education...', educationData);
     const response = await api.post('/api/users/profile/education', educationData);
-    console.log('Education added successfully');
+    console.log('Profile API: Education added successfully');
     return response.data;
   } catch (error: any) {
-    console.error('Error adding education:', error);
+    console.error('Profile API: Error adding education:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
@@ -184,12 +184,12 @@ export const addEducation = async (educationData: Omit<Education, 'id'>): Promis
 // Response: Education
 export const updateEducation = async (educationId: string, educationData: Omit<Education, 'id'>): Promise<Education> => {
   try {
-    console.log('Updating education...', educationId, educationData);
+    console.log('Profile API: Updating education...', educationId, educationData);
     const response = await api.put(`/api/users/profile/education/${educationId}`, educationData);
-    console.log('Education updated successfully');
+    console.log('Profile API: Education updated successfully');
     return response.data;
   } catch (error: any) {
-    console.error('Error updating education:', error);
+    console.error('Profile API: Error updating education:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
@@ -200,12 +200,12 @@ export const updateEducation = async (educationId: string, educationData: Omit<E
 // Response: { message: string }
 export const deleteEducation = async (educationId: string): Promise<{ message: string }> => {
   try {
-    console.log('Deleting education...', educationId);
+    console.log('Profile API: Deleting education...', educationId);
     const response = await api.delete(`/api/users/profile/education/${educationId}`);
-    console.log('Education deleted successfully');
+    console.log('Profile API: Education deleted successfully');
     return response.data;
   } catch (error: any) {
-    console.error('Error deleting education:', error);
+    console.error('Profile API: Error deleting education:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
