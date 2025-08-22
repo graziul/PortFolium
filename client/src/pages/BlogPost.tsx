@@ -1,230 +1,233 @@
-import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Calendar, Clock, Share2, Edit, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { getBlogPost, deleteBlogPost, BlogPost } from '@/api/blog';
-import { useToast } from '@/hooks/useToast';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { ArrowLeft, Edit, Trash2, Calendar, Clock } from 'lucide-react';
+import { getBlogPost, deleteBlogPost } from '../api/blog';
+import { useToast } from '../hooks/useToast';
+
+console.log('BlogPostPage: Component loading...');
+
+interface BlogPost {
+  _id: string;
+  title: string;
+  content: string;
+  excerpt?: string;
+  tags?: string[];
+  featuredImage?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export function BlogPostPage() {
+  console.log('BlogPostPage: Component rendering...');
+  
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [post, setPost] = useState<BlogPost | null>(null);
   const [loading, setLoading] = useState(true);
-  const [deleting, setDeleting] = useState(false);
-  const { toast } = useToast();
+
+  console.log('BlogPostPage: Post ID from params:', id);
 
   useEffect(() => {
-    const fetchPost = async () => {
-      if (!id) return;
+    console.log('BlogPostPage: useEffect triggered with id:', id);
+    if (id) {
+      fetchPost();
+    } else {
+      console.error('BlogPostPage: No post ID provided');
+      setLoading(false);
+    }
+  }, [id]);
 
-      try {
-        console.log('BlogPost: Fetching blog post:', id);
-        const response = await getBlogPost(id);
-        setPost(response.post);
-        console.log('BlogPost: Blog post loaded successfully');
-      } catch (error: any) {
-        console.error('BlogPost: Error loading blog post:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to load blog post. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPost();
-  }, [id, toast]);
-
-  const handleDeletePost = async () => {
-    if (!post || !confirm(`Are you sure you want to delete "${post.title}"?`)) {
+  const fetchPost = async () => {
+    console.log('BlogPostPage: fetchPost called');
+    if (!id) {
+      console.error('BlogPostPage: Cannot fetch post - no ID provided');
       return;
     }
 
-    setDeleting(true);
     try {
-      console.log('BlogPost: Deleting blog post:', post._id);
-      await deleteBlogPost(post._id);
-      console.log('BlogPost: Blog post deleted successfully');
+      console.log('BlogPostPage: Fetching post with ID:', id);
+      setLoading(true);
+      const response = await getBlogPost(id);
+      console.log('BlogPostPage: Post fetched successfully:', response);
+      setPost(response.post);
+    } catch (error) {
+      console.error('BlogPostPage: Error fetching post:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch blog post",
+        variant: "destructive",
+      });
+    } finally {
+      console.log('BlogPostPage: Setting loading to false');
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    console.log('BlogPostPage: handleDelete called');
+    if (!post || !id) {
+      console.error('BlogPostPage: Cannot delete - no post or ID');
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to delete this blog post?')) {
+      console.log('BlogPostPage: Delete cancelled by user');
+      return;
+    }
+
+    try {
+      console.log('BlogPostPage: Deleting post with ID:', id);
+      await deleteBlogPost(id);
+      console.log('BlogPostPage: Post deleted successfully');
       toast({
         title: "Success",
         description: "Blog post deleted successfully",
       });
       navigate('/blog');
-    } catch (error: any) {
-      console.error('BlogPost: Error deleting blog post:', error);
+    } catch (error) {
+      console.error('BlogPostPage: Error deleting post:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to delete blog post",
         variant: "destructive",
       });
-    } finally {
-      setDeleting(false);
     }
   };
 
+  const handleEdit = () => {
+    console.log('BlogPostPage: handleEdit called, navigating to edit page');
+    navigate(`/blog/edit/${id}`);
+  };
+
+  const handleBack = () => {
+    console.log('BlogPostPage: handleBack called, navigating to blog list');
+    navigate('/blog');
+  };
+
   if (loading) {
+    console.log('BlogPostPage: Rendering loading state');
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-lg">Loading blog post...</div>
+        </div>
       </div>
     );
   }
 
   if (!post) {
+    console.log('BlogPostPage: Rendering not found state');
     return (
-      <div className="text-center py-12">
-        <h1 className="text-2xl font-bold mb-4">Post not found</h1>
-        <Button asChild>
-          <Link to="/blog">
-            <ArrowLeft className="mr-2 h-4 w-4" />
+      <div className="container mx-auto px-4 py-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Blog Post Not Found</h1>
+          <p className="text-gray-600 mb-6">The blog post you're looking for doesn't exist.</p>
+          <Button onClick={handleBack}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Blog
-          </Link>
-        </Button>
+          </Button>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {/* Back Button */}
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <Button variant="ghost" asChild>
-          <Link to="/blog">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Blog
-          </Link>
-        </Button>
-      </motion.div>
+  console.log('BlogPostPage: Rendering blog post:', post.title);
 
-      {/* Article Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.6 }}
-        className="space-y-6"
-      >
-        <div className="aspect-video overflow-hidden rounded-2xl">
-          {post.featuredImage ? (
-            <img
-              src={`http://localhost:3000${post.featuredImage}`}
-              alt={post.title}
-              className="w-full h-full object-cover"
-              onLoad={() => console.log('BlogPost: Image loaded successfully:', `http://localhost:3000${post.featuredImage}`)}
-              onError={(e) => {
-                console.error('BlogPost: Image failed to load:', `http://localhost:3000${post.featuredImage}`);
-                console.error('BlogPost: Image error event:', e);
-                console.error('BlogPost: Image src attribute:', e.currentTarget.src);
-              }}
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center rounded-2xl">
-              <span className="text-gray-400 text-lg">No featured image</span>
+  return (
+    <div className="container mx-auto px-4 py-6">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
+          <Button variant="outline" onClick={handleBack}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Blog
+          </Button>
+          
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleEdit}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+          </div>
+        </div>
+
+        {/* Blog Post Content */}
+        <Card>
+          {/* Featured Image */}
+          {post.featuredImage && (
+            <div className="aspect-video overflow-hidden rounded-t-lg">
+              <img
+                src={post.featuredImage}
+                alt={post.title}
+                className="w-full h-full object-cover"
+                onLoad={() => {
+                  console.log('BlogPostPage: Featured image loaded successfully');
+                }}
+                onError={(e) => {
+                  console.error('BlogPostPage: Featured image failed to load:', post.featuredImage);
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
             </div>
           )}
-        </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <Badge variant="secondary">{post.category}</Badge>
-            <Badge variant={post.status === 'published' ? 'default' : 'outline'}>
-              {post.status}
-            </Badge>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                <span>{post.readingTime} min read</span>
-              </div>
+          <CardHeader>
+            <CardTitle className="text-3xl font-bold text-gray-900 mb-4">
+              {post.title}
+            </CardTitle>
+            
+            {/* Meta Information */}
+            <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
               <div className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                <span>{new Date(post.publishedAt).toLocaleDateString()}</span>
+                <span>Published {new Date(post.createdAt).toLocaleDateString()}</span>
               </div>
+              {post.updatedAt !== post.createdAt && (
+                <div className="flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  <span>Updated {new Date(post.updatedAt).toLocaleDateString()}</span>
+                </div>
+              )}
             </div>
-          </div>
 
-          <h1 className="text-4xl font-bold leading-tight">{post.title}</h1>
-
-          <p className="text-xl text-muted-foreground">{post.excerpt}</p>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <img
-                src={post.author.avatar}
-                alt={post.author.name}
-                className="w-10 h-10 rounded-full"
-              />
-              <div>
-                <p className="font-medium">{post.author.name}</p>
-                <p className="text-sm text-muted-foreground">Author</p>
+            {/* Tags */}
+            {post.tags && post.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {post.tags.map((tag, index) => (
+                  <Badge key={index} variant="secondary">
+                    {tag}
+                  </Badge>
+                ))}
               </div>
-            </div>
+            )}
 
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
-                <Share2 className="h-4 w-4 mr-2" />
-                Share
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link to={`/blog/edit/${post._id}`}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </Link>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDeletePost}
-                disabled={deleting}
-              >
-                {deleting ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                ) : (
-                  <Trash2 className="h-4 w-4 mr-2" />
-                )}
-                Delete
-              </Button>
-            </div>
-          </div>
-        </div>
-      </motion.div>
+            {/* Excerpt */}
+            {post.excerpt && (
+              <p className="text-lg text-gray-700 italic border-l-4 border-blue-500 pl-4 mb-6">
+                {post.excerpt}
+              </p>
+            )}
+          </CardHeader>
 
-      {/* Article Content */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.6 }}
-      >
-        <Card className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-white/20">
-          <CardContent className="p-8">
-            <div
-              className="prose prose-lg dark:prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: post.content.replace(/\n/g, '<br />') }}
+          <CardContent>
+            {/* Blog Content */}
+            <div 
+              className="prose prose-lg max-w-none"
+              dangerouslySetInnerHTML={{ __html: post.content }}
             />
           </CardContent>
         </Card>
-      </motion.div>
-
-      {/* Tags */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6, duration: 0.6 }}
-        className="flex flex-wrap gap-2"
-      >
-        {post.tags.map((tag) => (
-          <Badge key={tag} variant="outline">
-            {tag}
-          </Badge>
-        ))}
-      </motion.div>
+      </div>
     </div>
   );
 }
+
+console.log('BlogPostPage: Component defined successfully');

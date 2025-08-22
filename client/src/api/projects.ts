@@ -1,85 +1,107 @@
 import api from './api';
 
+export interface Collaborator {
+  name: string;
+  role: string;
+  profileUrl?: string;
+}
+
+export interface MediaCoverage {
+  title: string;
+  url: string;
+  publication?: string;
+  publishedDate?: string;
+  description?: string;
+}
+
 export interface Project {
   _id: string;
   title: string;
   description: string;
   shortDescription?: string;
+  status: 'ideation' | 'researching' | 'planning' | 'in-progress' | 'completed' | 'on-hold';
   technologies: string[];
-  status: 'researching' | 'planning' | 'in-progress' | 'completed' | 'on-hold';
-  startDate: string;
-  endDate?: string;
-  githubUrl?: string;
   liveUrl?: string;
+  githubUrl?: string;
   paperUrl?: string;
   thumbnailUrl?: string;
   bannerUrl?: string;
   imageUrl?: string;
-  category?: string;
-  priority: 'low' | 'medium' | 'high';
-  collaborators: string[];
-  tags: string[];
   archived?: boolean;
   featured?: boolean;
+  order?: number;
+  startDate?: string;
+  endDate?: string;
   openToCollaborators?: boolean;
   acceptingSponsors?: boolean;
   collaboratorCount?: number;
-  enthusiasmLevel?: string;
+  collaborators?: Collaborator[];
+  enthusiasmLevel?: 'Low' | 'Medium' | 'High' | 'Very High';
   mediaCoverage?: MediaCoverage[];
+  userId: string;
   createdAt: string;
   updatedAt: string;
-  userId: string;
-}
-
-export interface MediaCoverage {
-  _id?: string;
-  title: string;
-  url: string;
-  source: string;
-  date: string;
-  description?: string;
+  priority?: number;
+  progress?: number;
 }
 
 export interface CreateProjectRequest {
   title: string;
   description: string;
   shortDescription?: string;
+  status?: Project['status'];
   technologies: string[];
-  status: 'researching' | 'planning' | 'in-progress' | 'completed' | 'on-hold';
-  startDate?: string;
-  endDate?: string;
-  githubUrl?: string;
   liveUrl?: string;
+  githubUrl?: string;
   paperUrl?: string;
   thumbnailUrl?: string;
   bannerUrl?: string;
-  category?: string;
-  priority: 'low' | 'medium' | 'high';
-  collaborators: string[];
-  tags: string[];
-  archived?: boolean;
-  featured?: boolean;
+  startDate?: string;
+  endDate?: string;
   openToCollaborators?: boolean;
   acceptingSponsors?: boolean;
   collaboratorCount?: number;
+  collaborators?: Collaborator[];
+  enthusiasmLevel?: Project['enthusiasmLevel'];
+  mediaCoverage?: MediaCoverage[];
 }
 
-export interface UpdateProjectRequest extends Partial<CreateProjectRequest> {
-  _id: string;
+export interface UpdateProjectRequest {
+  title?: string;
+  description?: string;
+  shortDescription?: string;
+  status?: Project['status'];
+  technologies?: string[];
+  liveUrl?: string;
+  githubUrl?: string;
+  paperUrl?: string;
+  thumbnailUrl?: string;
+  bannerUrl?: string;
+  archived?: boolean;
+  featured?: boolean;
+  order?: number;
+  startDate?: string;
+  endDate?: string;
+  openToCollaborators?: boolean;
+  acceptingSponsors?: boolean;
+  collaboratorCount?: number;
+  collaborators?: Collaborator[];
+  enthusiasmLevel?: Project['enthusiasmLevel'];
+  mediaCoverage?: MediaCoverage[];
 }
 
-// Description: Get all projects for the current user
+// Description: Get all projects for the authenticated user
 // Endpoint: GET /api/projects
 // Request: {}
 // Response: { projects: Project[] }
-export const getProjects = async (): Promise<{ projects: Project[] }> => {
-  console.log('ProjectsAPI: Fetching projects from backend');
+export const getProjects = async () => {
   try {
+    console.log('Projects API: Fetching all projects...');
     const response = await api.get('/api/projects');
-    console.log('ProjectsAPI: Projects fetched successfully:', response.data);
+    console.log('Projects API: Projects fetched successfully:', response.data.projects?.length || 0);
     return response.data;
   } catch (error) {
-    console.error('ProjectsAPI: Error fetching projects:', error);
+    console.error('Projects API: Error fetching projects:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
@@ -88,14 +110,14 @@ export const getProjects = async (): Promise<{ projects: Project[] }> => {
 // Endpoint: GET /api/projects/:id
 // Request: {}
 // Response: { project: Project }
-export const getProject = async (id: string): Promise<{ project: Project }> => {
-  console.log('ProjectsAPI: Fetching project by ID:', id);
+export const getProject = async (id: string) => {
   try {
+    console.log('Projects API: Fetching project by ID:', id);
     const response = await api.get(`/api/projects/${id}`);
-    console.log('ProjectsAPI: Project fetched successfully:', response.data);
+    console.log('Projects API: Project fetched successfully:', response.data.project?.title);
     return response.data;
   } catch (error) {
-    console.error('ProjectsAPI: Error fetching project:', error);
+    console.error('Projects API: Error fetching project:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
@@ -104,30 +126,30 @@ export const getProject = async (id: string): Promise<{ project: Project }> => {
 // Endpoint: POST /api/projects
 // Request: CreateProjectRequest
 // Response: { project: Project, message: string }
-export const createProject = async (projectData: CreateProjectRequest): Promise<{ project: Project, message: string }> => {
-  console.log('ProjectsAPI: Creating project:', projectData);
+export const createProject = async (projectData: CreateProjectRequest) => {
   try {
+    console.log('Projects API: Creating new project:', projectData.title);
     const response = await api.post('/api/projects', projectData);
-    console.log('ProjectsAPI: Project created successfully:', response.data);
+    console.log('Projects API: Project created successfully:', response.data.project?._id);
     return response.data;
   } catch (error) {
-    console.error('ProjectsAPI: Error creating project:', error);
+    console.error('Projects API: Error creating project:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
 
 // Description: Update an existing project
 // Endpoint: PUT /api/projects/:id
-// Request: Partial<CreateProjectRequest>
+// Request: UpdateProjectRequest
 // Response: { project: Project, message: string }
-export const updateProject = async (id: string, projectData: Partial<CreateProjectRequest>): Promise<{ project: Project, message: string }> => {
-  console.log('ProjectsAPI: Updating project:', id, projectData);
+export const updateProject = async (id: string, projectData: UpdateProjectRequest) => {
   try {
+    console.log('Projects API: Updating project:', id, projectData);
     const response = await api.put(`/api/projects/${id}`, projectData);
-    console.log('ProjectsAPI: Project updated successfully:', response.data);
+    console.log('Projects API: Project updated successfully:', response.data.project?.title);
     return response.data;
   } catch (error) {
-    console.error('ProjectsAPI: Error updating project:', error);
+    console.error('Projects API: Error updating project:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
@@ -136,49 +158,54 @@ export const updateProject = async (id: string, projectData: Partial<CreateProje
 // Endpoint: DELETE /api/projects/:id
 // Request: {}
 // Response: { message: string }
-export const deleteProject = async (id: string): Promise<{ message: string }> => {
-  console.log('ProjectsAPI: Deleting project:', id);
+export const deleteProject = async (id: string) => {
   try {
+    console.log('Projects API: Deleting project:', id);
     const response = await api.delete(`/api/projects/${id}`);
-    console.log('ProjectsAPI: Project deleted successfully:', response.data);
+    console.log('Projects API: Project deleted successfully');
     return response.data;
   } catch (error) {
-    console.error('ProjectsAPI: Error deleting project:', error);
+    console.error('Projects API: Error deleting project:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
 
 // Description: Upload project image
 // Endpoint: POST /api/projects/upload
-// Request: FormData with image file
+// Request: FormData with 'image' file
 // Response: { imageUrl: string }
-export const uploadProjectImage = async (file: File): Promise<{ imageUrl: string }> => {
-  console.log('ProjectsAPI: Uploading project image:', file.name);
+export const uploadProjectImage = async (file: File) => {
   try {
+    console.log('Projects API: Uploading project image:', file.name);
     const formData = new FormData();
     formData.append('image', file);
+    
     const response = await api.post('/api/projects/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
-    console.log('ProjectsAPI: Image upload response:', response.data);
-
-    // Convert relative path to full URL
-    const imageUrl = response.data.imageUrl.startsWith('http')
-      ? response.data.imageUrl
-      : `http://localhost:3000${response.data.imageUrl}`;
-
-    console.log('ProjectsAPI: Full image URL:', imageUrl);
-    return { imageUrl };
+    
+    console.log('Projects API: Image uploaded successfully:', response.data.imageUrl);
+    return response.data;
   } catch (error) {
-    console.error('ProjectsAPI: Error uploading image:', error);
-    
-    // Provide more specific error messages
-    if (error?.response?.data?.error) {
-      throw new Error(error.response.data.error);
-    }
-    
-    throw new Error(error?.response?.data?.message || error.message || 'Failed to upload image');
+    console.error('Projects API: Error uploading image:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Update projects order
+// Endpoint: PUT /api/projects/order
+// Request: { projectIds: string[] }
+// Response: { message: string }
+export const updateProjectsOrder = async (projectIds: string[]) => {
+  try {
+    console.log('Projects API: Updating projects order:', projectIds);
+    const response = await api.put('/api/projects/order', { projectIds });
+    console.log('Projects API: Projects order updated successfully');
+    return response.data;
+  } catch (error) {
+    console.error('Projects API: Error updating projects order:', error);
+    throw new Error(error?.response?.data?.error || error.message);
   }
 };

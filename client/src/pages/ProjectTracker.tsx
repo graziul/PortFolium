@@ -15,7 +15,15 @@ import {
   FileText,
   Archive,
   ArchiveRestore,
-  Plus
+  Plus,
+  Lightbulb,
+  Search,
+  Clock,
+  Play,
+  CheckCircle,
+  PauseCircle,
+  Users,
+  DollarSign
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -25,13 +33,57 @@ import {
 } from '../components/ui/dropdown-menu';
 import { getProjects, updateProject, deleteProject, Project } from '../api/projects';
 import { useToast } from '../hooks/useToast';
-import { motion, AnimatePresence } from 'framer-motion';
 
-const statusColumns = {
-  planning: { title: 'Planning', color: 'bg-blue-50 border-blue-200' },
-  'in-progress': { title: 'In Progress', color: 'bg-yellow-50 border-yellow-200' },
-  completed: { title: 'Completed', color: 'bg-green-50 border-green-200' },
-  'on-hold': { title: 'On Hold', color: 'bg-red-50 border-red-200' }
+// Main workflow columns (excluding on-hold)
+const mainStatusColumns = {
+  ideation: {
+    title: 'Ideation',
+    color: 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200',
+    icon: Lightbulb,
+    iconColor: 'text-purple-600'
+  },
+  researching: {
+    title: 'Researching',
+    color: 'bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200',
+    icon: Search,
+    iconColor: 'text-orange-600'
+  },
+  planning: {
+    title: 'Planning',
+    color: 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200',
+    icon: Clock,
+    iconColor: 'text-blue-600'
+  },
+  'in-progress': {
+    title: 'In Progress',
+    color: 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200',
+    icon: Play,
+    iconColor: 'text-yellow-600'
+  },
+  completed: {
+    title: 'Completed',
+    color: 'bg-gradient-to-br from-green-50 to-green-100 border-green-200',
+    icon: CheckCircle,
+    iconColor: 'text-green-600'
+  }
+};
+
+// On-hold section (separate)
+const onHoldColumn = {
+  'on-hold': {
+    title: 'On Hold',
+    color: 'bg-gradient-to-br from-red-50 to-red-100 border-red-200',
+    icon: PauseCircle,
+    iconColor: 'text-red-600'
+  }
+};
+
+// Enthusiasm indicators with cleaner visual design
+const enthusiasmIndicators = {
+  'Low': { emoji: '😴', title: 'Low enthusiasm', color: 'bg-gray-100 text-gray-600' },
+  'Medium': { emoji: '😊', title: 'Medium enthusiasm', color: 'bg-blue-100 text-blue-600' },
+  'High': { emoji: '🤩', title: 'High enthusiasm', color: 'bg-orange-100 text-orange-600' },
+  'Very High': { emoji: '🚀', title: 'Very high enthusiasm', color: 'bg-red-100 text-red-600' }
 };
 
 export function ProjectTracker() {
@@ -49,47 +101,16 @@ export function ProjectTracker() {
   const fetchProjects = async () => {
     try {
       console.log('ProjectTracker: Fetching projects...');
-      console.log('ProjectTracker: Checking for missing features that user mentioned:');
-      console.log('ProjectTracker: - Looking for Enthusiasm level (user said this was implemented well)');
-      console.log('ProjectTracker: - Checking for Paper buttons/links');
-      console.log('ProjectTracker: - Verifying all status columns are present');
-      console.log('ProjectTracker: - Ensuring priority/percentage are removed from cards');
-      
       setLoading(true);
       const response = await getProjects() as { projects: Project[] };
       console.log('ProjectTracker: Received projects:', response.projects.length);
-      
-      // Log detailed analysis of each project to identify missing features
-      response.projects.forEach((project, index) => {
-        console.log(`ProjectTracker: Project ${index + 1} analysis:`, {
-          title: project.title,
-          status: project.status,
-          hasGithubUrl: !!project.githubUrl,
-          hasLiveUrl: !!project.liveUrl,
-          hasPaperUrl: !!project.paperUrl,
-          hasMediaCoverage: !!(project.mediaCoverage && project.mediaCoverage.length > 0),
-          hasPriority: !!project.priority,
-          hasProgress: project.progress !== undefined,
-          hasEnthusiasmLevel: !!(project as any).enthusiasmLevel, // Check if enthusiasm level exists
-          technologies: project.technologies?.length || 0,
-          collaborators: project.collaborators?.length || 0
-        });
-      });
 
-      // Filter out archived projects
       const activeProjects = response.projects.filter(project => !(project as any).archived);
       const archived = response.projects.filter(project => (project as any).archived);
 
       setProjects(activeProjects);
       setArchivedProjects(archived);
-      
-      console.log('ProjectTracker: Status distribution:', {
-        planning: activeProjects.filter(p => p.status === 'planning').length,
-        'in-progress': activeProjects.filter(p => p.status === 'in-progress').length,
-        completed: activeProjects.filter(p => p.status === 'completed').length,
-        'on-hold': activeProjects.filter(p => p.status === 'on-hold').length
-      });
-      
+
       console.log('ProjectTracker: Active projects set:', activeProjects.length);
       console.log('ProjectTracker: Archived projects set:', archived.length);
     } catch (error) {
@@ -105,55 +126,34 @@ export function ProjectTracker() {
   };
 
   const onDragEnd = useCallback(async (result: DropResult) => {
-    console.log('ProjectTracker: Drag ended with result:', result);
-
     const { destination, source, draggableId } = result;
 
-    // If dropped outside a droppable area
-    if (!destination) {
-      console.log('ProjectTracker: No destination, drag cancelled');
+    if (!destination) return;
+
+    if (destination.droppableId === source.droppableId && destination.index === source.index) {
       return;
     }
-
-    // If dropped in the same position
-    if (
-      destination.droppableId === source.droppableId &&
-      destination.index === source.index
-    ) {
-      console.log('ProjectTracker: Dropped in same position, no change needed');
-      return;
-    }
-
-    console.log('ProjectTracker: Processing drag from', source.droppableId, 'to', destination.droppableId);
 
     const newStatus = destination.droppableId as Project['status'];
     const projectId = draggableId;
 
     try {
-      // Optimistically update the UI
       const updatedProjects = projects.map(project => {
         if (project._id === projectId) {
-          console.log('ProjectTracker: Updating project', project.title, 'status to', newStatus);
           return { ...project, status: newStatus };
         }
         return project;
       });
 
       setProjects(updatedProjects);
-
-      // Update the project on the backend
-      console.log('ProjectTracker: Sending update request for project:', projectId);
       await updateProject(projectId, { status: newStatus });
 
       toast({
         title: "Success",
         description: "Project status updated successfully.",
       });
-
-      console.log('ProjectTracker: Project status updated successfully');
     } catch (error) {
       console.error('ProjectTracker: Error updating project status:', error);
-      // Revert the optimistic update
       fetchProjects();
       toast({
         title: "Error",
@@ -164,12 +164,10 @@ export function ProjectTracker() {
   }, [projects, toast]);
 
   const handleEdit = useCallback((projectId: string) => {
-    console.log('ProjectTracker: Navigating to edit project:', projectId);
     navigate(`/projects/edit/${projectId}`);
   }, [navigate]);
 
   const handleView = useCallback((projectId: string) => {
-    console.log('ProjectTracker: Navigating to view project:', projectId);
     navigate(`/projects/${projectId}`);
   }, [navigate]);
 
@@ -179,18 +177,12 @@ export function ProjectTracker() {
     }
 
     try {
-      console.log('ProjectTracker: Deleting project:', projectId);
       await deleteProject(projectId);
-
-      // Remove from local state
       setProjects(prev => prev.filter(p => p._id !== projectId));
-
       toast({
         title: "Success",
         description: "Project deleted successfully.",
       });
-
-      console.log('ProjectTracker: Project deleted successfully');
     } catch (error) {
       console.error('ProjectTracker: Error deleting project:', error);
       toast({
@@ -203,22 +195,16 @@ export function ProjectTracker() {
 
   const handleArchive = useCallback(async (projectId: string) => {
     try {
-      console.log('ProjectTracker: Archiving project:', projectId);
       await updateProject(projectId, { archived: true } as any);
-
-      // Move project from active to archived
       const projectToArchive = projects.find(p => p._id === projectId);
       if (projectToArchive) {
         setProjects(prev => prev.filter(p => p._id !== projectId));
         setArchivedProjects(prev => [...prev, { ...projectToArchive, archived: true } as any]);
       }
-
       toast({
         title: "Success",
         description: "Project archived successfully.",
       });
-
-      console.log('ProjectTracker: Project archived successfully');
     } catch (error) {
       console.error('ProjectTracker: Error archiving project:', error);
       toast({
@@ -231,22 +217,16 @@ export function ProjectTracker() {
 
   const handleRestore = useCallback(async (projectId: string) => {
     try {
-      console.log('ProjectTracker: Restoring project:', projectId);
       await updateProject(projectId, { archived: false } as any);
-
-      // Move project from archived to active
       const projectToRestore = archivedProjects.find(p => p._id === projectId);
       if (projectToRestore) {
         setArchivedProjects(prev => prev.filter(p => p._id !== projectId));
         setProjects(prev => [...prev, { ...projectToRestore, archived: false } as any]);
       }
-
       toast({
         title: "Success",
         description: "Project restored successfully.",
       });
-
-      console.log('ProjectTracker: Project restored successfully');
     } catch (error) {
       console.error('ProjectTracker: Error restoring project:', error);
       toast({
@@ -261,68 +241,61 @@ export function ProjectTracker() {
     return projects.filter(project => project.status === status);
   }, [projects]);
 
-  const ProjectCard = React.memo(({ project, index }: { project: Project; index: number }) => {
-    console.log('ProjectTracker: Rendering ProjectCard for:', project.title, {
-      showingPriority: !!project.priority,
-      showingProgress: project.progress !== undefined,
-      showingEnthusiasm: !!(project as any).enthusiasmLevel,
-      hasLiveUrl: !!project.liveUrl,
-      hasGithubUrl: !!project.githubUrl,
-      hasPaperUrl: !!project.paperUrl
-    });
+  const ProjectCard = React.memo(({ project, index, isHorizontal = false }: { project: Project; index: number; isHorizontal?: boolean }) => {
+    const enthusiasmConfig = project.enthusiasmLevel ? enthusiasmIndicators[project.enthusiasmLevel] : null;
 
     return (
       <Draggable draggableId={project._id} index={index}>
         {(provided, snapshot) => (
-          <motion.div
+          <div
             ref={provided.innerRef}
             {...provided.draggableProps}
             {...provided.dragHandleProps}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className={`mb-3 ${snapshot.isDragging ? 'rotate-2 shadow-lg' : ''}`}
+            className={`${isHorizontal ? 'mr-4 flex-shrink-0 w-80' : 'mb-3'} ${snapshot.isDragging ? 'rotate-2 shadow-2xl scale-105' : ''}`}
           >
             <Card
-              className="cursor-pointer hover:shadow-md transition-all duration-200 border-l-4 border-l-blue-500"
+              className="cursor-pointer hover:shadow-lg transition-all duration-200 bg-white border border-gray-200 hover:border-gray-300"
               onClick={() => handleView(project._id)}
             >
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
-                  <CardTitle className="text-sm font-semibold text-gray-900 leading-tight flex-1">
-                    {project.title}
-                  </CardTitle>
+                  <div className="flex-1 min-w-0 pr-2">
+                    <CardTitle className="text-sm font-semibold text-gray-900 line-clamp-2 mb-2">
+                      {project.title}
+                    </CardTitle>
+                  </div>
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 w-6 p-0"
+                        className="h-6 w-6 p-0 hover:bg-gray-100"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <MoreVertical className="h-3 w-3" />
+                        <MoreVertical className="h-3 w-3 text-gray-500" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="w-40">
                       <DropdownMenuItem onClick={(e) => {
                         e.stopPropagation();
                         handleView(project._id);
                       }}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
+                        <Eye className="h-3 w-3 mr-2" />
+                        View
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => {
                         e.stopPropagation();
                         handleEdit(project._id);
                       }}>
-                        <Edit className="h-4 w-4 mr-2" />
+                        <Edit className="h-3 w-3 mr-2" />
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => {
                         e.stopPropagation();
                         handleArchive(project._id);
                       }}>
-                        <Archive className="h-4 w-4 mr-2" />
+                        <Archive className="h-3 w-3 mr-2" />
                         Archive
                       </DropdownMenuItem>
                       <DropdownMenuItem
@@ -332,45 +305,68 @@ export function ProjectTracker() {
                         }}
                         className="text-red-600"
                       >
-                        <Trash2 className="h-4 w-4 mr-2" />
+                        <Trash2 className="h-3 w-3 mr-2" />
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-3">
-                <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">
-                  {project.description}
-                </p>
 
-                {/* NOTE: Removed priority and progress as per user request */}
-                {/* User specifically said: "you included priority/percentage on cards and it should not be there. Please remove." */}
-
-                {/* Check if enthusiasm level exists and display it */}
-                {(project as any).enthusiasmLevel && (
-                  <div className="text-xs">
-                    <span className="text-gray-500">Enthusiasm: </span>
-                    <Badge variant="outline" className="text-xs">
-                      {(project as any).enthusiasmLevel}
-                    </Badge>
+                {/* Enthusiasm Level */}
+                {enthusiasmConfig && (
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${enthusiasmConfig.color} flex items-center gap-1`}>
+                      <span>{enthusiasmConfig.emoji}</span>
+                      <span>My enthusiasm</span>
+                    </div>
                   </div>
                 )}
 
-                <div className="flex flex-wrap gap-1">
-                  {project.technologies?.slice(0, 3).map((tech, index) => (
-                    <Badge key={index} variant="outline" className="text-xs px-1 py-0">
-                      {tech}
+                {/* Collaboration Indicators */}
+                <div className="flex gap-1 flex-wrap">
+                  {project.openToCollaborators && (
+                    <Badge variant="secondary" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                      <Users className="h-3 w-3 mr-1" />
+                      Open to Collaborators
                     </Badge>
-                  ))}
-                  {project.technologies?.length > 3 && (
-                    <Badge variant="outline" className="text-xs px-1 py-0">
-                      +{project.technologies.length - 3}
+                  )}
+                  {project.acceptingSponsors && (
+                    <Badge variant="secondary" className="text-xs bg-green-50 text-green-700 border-green-200">
+                      <DollarSign className="h-3 w-3 mr-1" />
+                      Accepting Sponsors
                     </Badge>
                   )}
                 </div>
+              </CardHeader>
 
-                <div className="flex gap-1">
+              <CardContent className="pt-0 space-y-2">
+                <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
+                  {project.description}
+                </p>
+
+                {project.technologies && project.technologies.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {project.technologies.slice(0, 2).map((tech, index) => (
+                      <Badge
+                        key={index}
+                        variant="outline"
+                        className="text-xs px-2 py-0 text-gray-600 border-gray-300"
+                      >
+                        {tech}
+                      </Badge>
+                    ))}
+                    {project.technologies.length > 2 && (
+                      <Badge
+                        variant="outline"
+                        className="text-xs px-2 py-0 text-gray-500 border-gray-300"
+                      >
+                        +{project.technologies.length - 2}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex gap-1 pt-1">
                   {project.liveUrl && (
                     <Button
                       variant="outline"
@@ -379,10 +375,10 @@ export function ProjectTracker() {
                         e.stopPropagation();
                         window.open(project.liveUrl, '_blank');
                       }}
-                      className="h-6 text-xs px-2"
+                      className="h-6 px-2 text-xs border-gray-300 hover:bg-gray-50"
                     >
-                      <ExternalLink className="h-2.5 w-2.5 mr-1" />
-                      Live
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      Demo
                     </Button>
                   )}
                   {project.githubUrl && (
@@ -393,13 +389,12 @@ export function ProjectTracker() {
                         e.stopPropagation();
                         window.open(project.githubUrl, '_blank');
                       }}
-                      className="h-6 text-xs px-2"
+                      className="h-6 px-2 text-xs border-gray-300 hover:bg-gray-50"
                     >
-                      <GitBranch className="h-2.5 w-2.5 mr-1" />
+                      <GitBranch className="h-3 w-3 mr-1" />
                       Code
                     </Button>
                   )}
-                  {/* User specifically requested Paper buttons/links */}
                   {project.paperUrl && (
                     <Button
                       variant="outline"
@@ -408,56 +403,57 @@ export function ProjectTracker() {
                         e.stopPropagation();
                         window.open(project.paperUrl, '_blank');
                       }}
-                      className="h-6 text-xs px-2"
+                      className="h-6 px-2 text-xs border-gray-300 hover:bg-gray-50"
                     >
-                      <FileText className="h-2.5 w-2.5 mr-1" />
+                      <FileText className="h-3 w-3 mr-1" />
                       Paper
                     </Button>
                   )}
                 </div>
 
                 {project.startDate && (
-                  <div className="flex items-center gap-1 text-xs text-gray-500">
+                  <div className="flex items-center gap-1 text-xs text-gray-500 pt-1 border-t border-gray-100">
                     <Calendar className="h-3 w-3" />
                     <span>Started {new Date(project.startDate).toLocaleDateString()}</span>
                   </div>
                 )}
               </CardContent>
             </Card>
-          </motion.div>
+          </div>
         )}
       </Draggable>
     );
   });
 
-  const StatusColumn = React.memo(({ status, title, projects: columnProjects }: {
+  const StatusColumn = React.memo(({ status, title, projects: columnProjects, icon: Icon, iconColor }: {
     status: Project['status'];
     title: string;
-    projects: Project[]
+    projects: Project[];
+    icon: React.ComponentType<any>;
+    iconColor: string;
   }) => {
-    console.log(`ProjectTracker: Rendering StatusColumn for ${status}:`, {
-      title,
-      projectCount: columnProjects.length,
-      projects: columnProjects.map(p => p.title)
-    });
-
     return (
       <div className="flex-1 min-w-0">
-        <div className={`rounded-lg p-4 min-h-[600px] ${statusColumns[status]?.color || 'bg-gray-50'}`}>
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold text-sm text-gray-800 flex items-center gap-2">
-              {title}
-              <Badge variant="secondary" className="text-xs">
-                {columnProjects.length}
-              </Badge>
-            </h3>
+        <div className={`rounded-lg p-3 min-h-[500px] ${mainStatusColumns[status]?.color || 'bg-gray-50'} border`}>
+          <div className="flex justify-between items-center mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center">
+                <Icon className={`h-3 w-3 ${iconColor}`} />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm text-gray-800">{title}</h3>
+                <span className="text-xs text-gray-600">
+                  {columnProjects.length} project{columnProjects.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => navigate('/projects/new')}
-              className="h-6 w-6 p-0"
+              className="h-6 w-6 p-0 hover:bg-white/80"
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-3 w-3 text-gray-600" />
             </Button>
           </div>
 
@@ -466,31 +462,102 @@ export function ProjectTracker() {
               <div
                 ref={provided.innerRef}
                 {...provided.droppableProps}
-                className={`min-h-[500px] transition-colors duration-200 ${
-                  snapshot.isDraggingOver ? 'bg-white/50 rounded-lg' : ''
+                className={`min-h-[400px] transition-all duration-200 rounded ${
+                  snapshot.isDraggingOver ? 'bg-white/50' : ''
                 }`}
               >
-                <AnimatePresence>
-                  {columnProjects.map((project, index) => (
-                    <ProjectCard key={project._id} project={project} index={index} />
-                  ))}
-                </AnimatePresence>
+                {columnProjects.map((project, index) => (
+                  <ProjectCard key={project._id} project={project} index={index} />
+                ))}
                 {provided.placeholder}
 
                 {columnProjects.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    <div className="text-sm mb-2">No projects</div>
+                  <div className="text-center py-6 text-gray-500">
+                    <div className="w-8 h-8 mx-auto mb-2 bg-white/80 rounded-full flex items-center justify-center">
+                      <Icon className={`h-4 w-4 ${iconColor} opacity-50`} />
+                    </div>
+                    <div className="text-xs mb-2">No projects yet</div>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => navigate('/projects/new')}
-                      className="text-xs"
+                      className="text-xs bg-white/80 hover:bg-white"
                     >
                       <Plus className="h-3 w-3 mr-1" />
                       Add project
                     </Button>
                   </div>
                 )}
+              </div>
+            )}
+          </Droppable>
+        </div>
+      </div>
+    );
+  });
+
+  const OnHoldSection = React.memo(() => {
+    const onHoldProjects = getProjectsByStatus('on-hold');
+    const { icon: Icon, iconColor, color } = onHoldColumn['on-hold'];
+
+    return (
+      <div className="mt-4">
+        <div className={`rounded-lg p-3 ${color} border`}>
+          <div className="flex justify-between items-center mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center">
+                <Icon className={`h-3 w-3 ${iconColor}`} />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm text-gray-800">On Hold</h3>
+                <span className="text-xs text-gray-600">
+                  {onHoldProjects.length} project{onHoldProjects.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/projects/new')}
+              className="h-6 w-6 p-0 hover:bg-white/80"
+            >
+              <Plus className="h-3 w-3 text-gray-600" />
+            </Button>
+          </div>
+
+          <Droppable droppableId="on-hold" direction="horizontal">
+            {(provided, snapshot) => (
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className={`min-h-[200px] transition-all duration-200 rounded ${
+                  snapshot.isDraggingOver ? 'bg-white/50' : ''
+                }`}
+              >
+                {onHoldProjects.length > 0 ? (
+                  <div className="flex overflow-x-auto pb-2 space-x-0">
+                    {onHoldProjects.map((project, index) => (
+                      <ProjectCard key={project._id} project={project} index={index} isHorizontal={true} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-gray-500">
+                    <div className="w-8 h-8 mx-auto mb-2 bg-white/80 rounded-full flex items-center justify-center">
+                      <Icon className={`h-4 w-4 ${iconColor} opacity-50`} />
+                    </div>
+                    <div className="text-xs mb-2">No projects on hold</div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate('/projects/new')}
+                      className="text-xs bg-white/80 hover:bg-white"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add project
+                    </Button>
+                  </div>
+                )}
+                {provided.placeholder}
               </div>
             )}
           </Droppable>
@@ -509,14 +576,12 @@ export function ProjectTracker() {
     );
   }
 
-  console.log('ProjectTracker: Rendering main component with status columns:', Object.keys(statusColumns));
-
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="container mx-auto px-4 py-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Project Tracker</h1>
-          <p className="text-gray-600 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">Project Tracker</h1>
+          <p className="text-sm text-gray-600">
             Drag and drop projects between columns to update their status
           </p>
         </div>
@@ -525,55 +590,51 @@ export function ProjectTracker() {
             variant="outline"
             size="sm"
             onClick={() => setShowArchived(!showArchived)}
+            className="bg-white"
           >
-            <Archive className="h-4 w-4 mr-2" />
+            <Archive className="h-3 w-3 mr-1" />
             {showArchived ? 'Hide' : 'Show'} Archived ({archivedProjects.length})
           </Button>
-          <Button onClick={() => navigate('/projects/new')} size="sm">
-            <Plus className="h-4 w-4 mr-2" />
+          <Button
+            onClick={() => navigate('/projects/new')}
+            size="sm"
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="h-3 w-3 mr-1" />
             Add Project
           </Button>
         </div>
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {/* User mentioned missing columns - ensuring all 4 status columns are present */}
-          <StatusColumn
-            status="planning"
-            title="Planning"
-            projects={getProjectsByStatus('planning')}
-          />
-          <StatusColumn
-            status="in-progress"
-            title="In Progress"
-            projects={getProjectsByStatus('in-progress')}
-          />
-          <StatusColumn
-            status="completed"
-            title="Completed"
-            projects={getProjectsByStatus('completed')}
-          />
-          <StatusColumn
-            status="on-hold"
-            title="On Hold"
-            projects={getProjectsByStatus('on-hold')}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 mb-4">
+          {Object.entries(mainStatusColumns).map(([status, column]) => (
+            <StatusColumn
+              key={status}
+              status={status as Project['status']}
+              title={column.title}
+              projects={getProjectsByStatus(status as Project['status'])}
+              icon={column.icon}
+              iconColor={column.iconColor}
+            />
+          ))}
         </div>
+
+        <OnHoldSection />
       </DragDropContext>
 
       {showArchived && archivedProjects.length > 0 && (
-        <div className="mt-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Archive className="h-5 w-5" />
+        <div className="mt-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <Archive className="h-4 w-4" />
             Archived Projects
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {archivedProjects.map((project) => (
-              <Card key={project._id} className="opacity-75 hover:opacity-100 transition-opacity">
+              <Card key={project._id} className="opacity-75 hover:opacity-100 transition-opacity bg-white border">
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start">
-                    <CardTitle className="text-sm font-semibold text-gray-900 leading-tight flex-1">
+                    <CardTitle className="text-sm font-semibold text-gray-900 flex-1">
                       {project.title}
                     </CardTitle>
                     <DropdownMenu>
@@ -584,26 +645,26 @@ export function ProjectTracker() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleView(project._id)}>
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Details
+                          <Eye className="h-3 w-3 mr-2" />
+                          View
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleRestore(project._id)}>
-                          <ArchiveRestore className="h-4 w-4 mr-2" />
+                          <ArchiveRestore className="h-3 w-3 mr-2" />
                           Restore
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleDelete(project._id)}
                           className="text-red-600"
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
+                          <Trash2 className="h-3 w-3 mr-2" />
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
                 </CardHeader>
-                <CardContent className="pt-0 space-y-3">
-                  <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">
+                <CardContent className="pt-0 space-y-2">
+                  <p className="text-xs text-gray-600 line-clamp-2">
                     {project.description}
                   </p>
                   <div className="flex flex-wrap gap-1">
@@ -613,7 +674,7 @@ export function ProjectTracker() {
                       </Badge>
                     ))}
                   </div>
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600">
                     Archived
                   </Badge>
                 </CardContent>

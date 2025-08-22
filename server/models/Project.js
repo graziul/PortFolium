@@ -18,8 +18,8 @@ const projectSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['researching', 'planning', 'in-progress', 'completed', 'on-hold'],
-    default: 'planning'
+    enum: ['ideation', 'researching', 'planning', 'in-progress', 'completed', 'on-hold'],
+    default: 'ideation'
   },
   technologies: [{
     type: String,
@@ -135,9 +135,9 @@ projectSchema.index({ userId: 1, featured: 1 });
 projectSchema.index({ userId: 1, order: 1 });
 projectSchema.index({ userId: 1, enthusiasmLevel: 1 });
 
-console.log('Project Model: Schema created with indexes including enthusiasmLevel and mediaCoverage fields');
+console.log('Project Model: Schema created with indexes including ideation status, enthusiasmLevel and mediaCoverage fields');
 
 const Project = mongoose.model('Project', projectSchema);
 
-console.log('Project Model: Model exported successfully with enhanced fields for user-requested features');
+console.log('Project Model: Model exported successfully with enhanced fields including ideation status');
 module.exports = Project;

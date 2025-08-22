@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Github, FileText, Globe, Code2, BookOpen, Rocket, Terminal, GraduationCap } from 'lucide-react';
+import { ExternalLink, Github, FileText, Globe, Code2, BookOpen, Rocket, Terminal, GraduationCap, Users, DollarSign } from 'lucide-react';
 import { Project } from '@/api/projects';
 import { useNavigate } from 'react-router-dom';
 
@@ -10,6 +10,14 @@ interface ProjectCardProps {
   project: Project;
   isDragging?: boolean;
 }
+
+// Enthusiasm level emoji mapping
+const enthusiasmEmojis = {
+  'Low': '😴',
+  'Medium': '😊',
+  'High': '🤩',
+  'Very High': '🚀'
+};
 
 const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }) => {
   const navigate = useNavigate();
@@ -27,6 +35,10 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'ideation':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'researching':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'completed':
         return 'bg-green-100 text-green-800 border-green-200';
       case 'in-progress':
@@ -93,7 +105,35 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
         <p className="text-sm text-gray-600 line-clamp-3">
           {project.shortDescription || project.description}
         </p>
-        
+
+        {/* Enthusiasm Level with Emoji */}
+        {project.enthusiasmLevel && (
+          <div className="flex items-center gap-2">
+            <span className="text-lg">
+              {enthusiasmEmojis[project.enthusiasmLevel]}
+            </span>
+            <Badge variant="outline" className="text-xs">
+              {project.enthusiasmLevel}
+            </Badge>
+          </div>
+        )}
+
+        {/* Collaboration and Sponsor Indicators */}
+        <div className="flex gap-2 flex-wrap">
+          {project.openToCollaborators && (
+            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              Open to Collaborators
+            </Badge>
+          )}
+          {project.acceptingSponsors && (
+            <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 flex items-center gap-1">
+              <DollarSign className="h-3 w-3" />
+              Accepting Sponsors
+            </Badge>
+          )}
+        </div>
+
         <div className="flex flex-wrap gap-1">
           {project.technologies.slice(0, 3).map((tech, index) => (
             <Badge key={index} variant="secondary" className="text-xs">
