@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Github, FileText } from 'lucide-react';
+import { ExternalLink, Github, FileText, Globe, Code2, BookOpen, Rocket, Terminal, GraduationCap } from 'lucide-react';
 import { Project } from '@/api/projects';
 import { useNavigate } from 'react-router-dom';
 
@@ -53,6 +53,28 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
       }`}
       onClick={handleCardClick}
     >
+      {/* Thumbnail Image Section */}
+      {(project.thumbnailUrl || project.imageUrl) && (
+        <div className="aspect-video overflow-hidden relative">
+          <img
+            src={project.thumbnailUrl || project.imageUrl}
+            alt={project.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            style={{ 
+              height: '180px',
+              objectFit: 'cover'
+            }}
+            onLoad={() => {
+              console.log('ProjectCard: Image loaded successfully:', project.thumbnailUrl || project.imageUrl);
+            }}
+            onError={(e) => {
+              console.error('ProjectCard: Image failed to load:', project.thumbnailUrl || project.imageUrl);
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        </div>
+      )}
+
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <CardTitle className="text-lg font-semibold line-clamp-2">
@@ -69,7 +91,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
       
       <CardContent className="space-y-4">
         <p className="text-sm text-gray-600 line-clamp-3">
-          {project.description}
+          {project.shortDescription || project.description}
         </p>
         
         <div className="flex flex-wrap gap-1">
@@ -91,10 +113,11 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
               size="sm"
               variant="outline"
               onClick={(e) => handleButtonClick(e, project.liveUrl!)}
-              className="flex items-center gap-1"
+              className="flex items-center gap-1 hover:bg-blue-50 hover:border-blue-300 transition-colors"
+              title="View Live Demo"
             >
-              <ExternalLink className="h-3 w-3" />
-              Live
+              <Rocket className="h-3 w-3 text-blue-600" />
+              <span className="text-blue-600 font-medium">Demo</span>
             </Button>
           )}
           
@@ -103,10 +126,11 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
               size="sm"
               variant="outline"
               onClick={(e) => handleButtonClick(e, project.githubUrl!)}
-              className="flex items-center gap-1"
+              className="flex items-center gap-1 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+              title="View Source Code"
             >
-              <Github className="h-3 w-3" />
-              Code
+              <Terminal className="h-3 w-3 text-gray-700" />
+              <span className="text-gray-700 font-medium">Code</span>
             </Button>
           )}
           
@@ -115,10 +139,11 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, isDragging = false }
               size="sm"
               variant="outline"
               onClick={(e) => handleButtonClick(e, project.paperUrl!)}
-              className="flex items-center gap-1"
+              className="flex items-center gap-1 hover:bg-purple-50 hover:border-purple-300 transition-colors"
+              title="Read Research Paper"
             >
-              <FileText className="h-3 w-3" />
-              Paper
+              <GraduationCap className="h-3 w-3 text-purple-600" />
+              <span className="text-purple-600 font-medium">Paper</span>
             </Button>
           )}
         </div>

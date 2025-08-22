@@ -1,9 +1,8 @@
 const express = require('express');
-const bcrypt = require('bcrypt');
+const bcryptjs = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/auth');
-
 const router = express.Router();
 
 console.log('AuthRoutes: Module loading...');
@@ -11,247 +10,170 @@ console.log('AuthRoutes: Module loading...');
 // Register route
 router.post('/register', async (req, res) => {
   console.log('AuthRoutes: POST /register - Registration request received');
-  console.log('AuthRoutes: Request body keys:', Object.keys(req.body));
-  console.log('AuthRoutes: Request body:', {
-    email: req.body.email ? 'PRESENT' : 'MISSING',
-    password: req.body.password ? 'PRESENT' : 'MISSING',
-    name: req.body.name ? 'PRESENT' : 'MISSING',
-    timestamp: new Date().toISOString()
-  });
+  console.log('AuthRoutes: Request body:', req.body);
 
   try {
     const { email, password, name } = req.body;
 
-    // Validation
-    if (!email) {
-      console.log('AuthRoutes: Registration failed - missing email');
-      return res.status(400).json({
-        error: 'Email is required',
-        field: 'email',
-        timestamp: new Date().toISOString()
-      });
+    // Validate input
+    if (!email || !password || !name) {
+      console.log('AuthRoutes: Missing required fields');
+      return res.status(400).json({ error: 'All fields are required' });
     }
-
-    if (!password) {
-      console.log('AuthRoutes: Registration failed - missing password');
-      return res.status(400).json({
-        error: 'Password is required',
-        field: 'password',
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    if (!name) {
-      console.log('AuthRoutes: Registration failed - missing name');
-      return res.status(400).json({
-        error: 'Name is required',
-        field: 'name',
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    console.log('AuthRoutes: Validation passed, checking if user exists...');
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    console.log('AuthRoutes: Checking if user exists with email:', email);
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
-      console.log('AuthRoutes: Registration failed - user already exists:', email);
-      return res.status(400).json({
-        error: 'User already exists with this email',
-        timestamp: new Date().toISOString()
-      });
+      console.log('AuthRoutes: User already exists');
+      return res.status(400).json({ error: 'User already exists' });
     }
 
-    console.log('AuthRoutes: User does not exist, creating new user...');
-
     // Hash password
+    console.log('AuthRoutes: Hashing password...');
     const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const hashedPassword = await bcryptjs.hash(password, saltRounds);
     console.log('AuthRoutes: Password hashed successfully');
 
     // Create user
+    console.log('AuthRoutes: Creating new user...');
     const user = new User({
-      email: email.toLowerCase(),
+      email,
       password: hashedPassword,
-      name: name.trim()
+      name
     });
 
     const savedUser = await user.save();
     console.log('AuthRoutes: User created successfully:', savedUser._id);
 
     // Generate tokens
+    console.log('AuthRoutes: Generating tokens...');
     const accessToken = generateAccessToken(savedUser._id);
-    console.log('AuthRoutes: Access token generated');
+    const refreshToken = generateRefreshToken(savedUser._id);
+    console.log('AuthRoutes: Tokens generated successfully');
 
-    // Return user data (excluding password)
-    const userData = {
-      id: savedUser._id,
-      email: savedUser.email,
-      name: savedUser.name
-    };
-
-    console.log('AuthRoutes: Registration successful for user:', userData.email);
     res.status(201).json({
+      message: 'User registered successfully',
       accessToken,
-      user: userData,
-      message: 'User registered successfully'
+      refreshToken,
+      user: {
+        id: savedUser._id,
+        email: savedUser.email,
+        name: savedUser.name
+      }
     });
-
   } catch (error) {
-    console.error('AuthRoutes: Registration error:', {
-      message: error.message,
-      stack: error.stack,
-      timestamp: new Date().toISOString()
-    });
-    res.status(500).json({
-      error: 'Internal server error during registration',
-      timestamp: new Date().toISOString()
-    });
+    console.error('AuthRoutes: Error during registration:', error);
+    console.error('AuthRoutes: Error stack:', error.stack);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Login route
 router.post('/login', async (req, res) => {
   console.log('AuthRoutes: POST /login - Login request received');
-  console.log('AuthRoutes: Request body:', {
-    email: req.body.email ? 'PRESENT' : 'MISSING',
-    password: req.body.password ? 'PRESENT' : 'MISSING',
-    timestamp: new Date().toISOString()
-  });
+  console.log('AuthRoutes: Request body:', req.body);
 
   try {
     const { email, password } = req.body;
 
-    // Validation
-    if (!email) {
-      console.log('AuthRoutes: Login failed - missing email');
-      return res.status(400).json({
-        error: 'Email is required',
-        field: 'email',
-        timestamp: new Date().toISOString()
-      });
+    // Validate input
+    if (!email || !password) {
+      console.log('AuthRoutes: Missing email or password');
+      return res.status(400).json({ error: 'Email and password are required' });
     }
-
-    if (!password) {
-      console.log('AuthRoutes: Login failed - missing password');
-      return res.status(400).json({
-        error: 'Password is required',
-        field: 'password',
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    console.log('AuthRoutes: Validation passed, looking up user...');
 
     // Find user
-    const user = await User.findOne({ email: email.toLowerCase() });
+    console.log('AuthRoutes: Looking up user with email:', email);
+    const user = await User.findOne({ email });
     if (!user) {
-      console.log('AuthRoutes: Login failed - user not found:', email);
-      return res.status(400).json({
-        error: 'Invalid email or password',
-        timestamp: new Date().toISOString()
-      });
+      console.log('AuthRoutes: User not found');
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     console.log('AuthRoutes: User found, verifying password...');
 
     // Check password
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) {
-      console.log('AuthRoutes: Login failed - invalid password for user:', email);
-      return res.status(400).json({
-        error: 'Invalid email or password',
-        timestamp: new Date().toISOString()
-      });
+    const isPasswordValid = await bcryptjs.compare(password, user.password);
+    if (!isPasswordValid) {
+      console.log('AuthRoutes: Invalid password');
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    console.log('AuthRoutes: Password verified, generating tokens...');
+    console.log('AuthRoutes: Password verified successfully');
 
     // Generate tokens
+    console.log('AuthRoutes: Generating tokens...');
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
     console.log('AuthRoutes: Tokens generated successfully');
 
-    // Return user data (excluding password)
-    const userData = {
-      id: user._id,
-      email: user.email,
-      name: user.name
-    };
-
-    console.log('AuthRoutes: Login successful for user:', userData.email);
     res.json({
+      message: 'Login successful',
       accessToken,
       refreshToken,
-      user: userData,
-      message: 'Login successful'
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name
+      }
     });
-
   } catch (error) {
-    console.error('AuthRoutes: Login error:', {
-      message: error.message,
-      stack: error.stack,
-      timestamp: new Date().toISOString()
-    });
-    res.status(500).json({
-      error: 'Internal server error during login',
-      timestamp: new Date().toISOString()
-    });
+    console.error('AuthRoutes: Error during login:', error);
+    console.error('AuthRoutes: Error stack:', error.stack);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Token refresh route
+// Refresh token route
 router.post('/refresh', async (req, res) => {
   console.log('AuthRoutes: POST /refresh - Token refresh request received');
-  console.log('AuthRoutes: Request body:', {
-    refreshToken: req.body.refreshToken ? 'PRESENT' : 'MISSING',
-    timestamp: new Date().toISOString()
-  });
 
   try {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
-      console.log('AuthRoutes: Token refresh failed - missing refresh token');
-      return res.status(400).json({
-        error: 'Refresh token is required',
-        timestamp: new Date().toISOString()
-      });
+      console.log('AuthRoutes: No refresh token provided');
+      return res.status(401).json({ error: 'Refresh token required' });
     }
 
     console.log('AuthRoutes: Verifying refresh token...');
     const decoded = verifyRefreshToken(refreshToken);
+    
+    if (!decoded) {
+      console.log('AuthRoutes: Invalid refresh token');
+      return res.status(401).json({ error: 'Invalid refresh token' });
+    }
+
     console.log('AuthRoutes: Refresh token verified, user ID:', decoded.id);
 
     // Generate new access token
-    const accessToken = generateAccessToken(decoded.id);
+    const newAccessToken = generateAccessToken(decoded.id);
     console.log('AuthRoutes: New access token generated');
 
     res.json({
-      accessToken,
-      message: 'Token refreshed successfully'
+      accessToken: newAccessToken
     });
-
   } catch (error) {
-    console.error('AuthRoutes: Token refresh error:', {
-      message: error.message,
-      stack: error.stack,
-      timestamp: new Date().toISOString()
-    });
-    res.status(401).json({
-      error: 'Invalid refresh token',
-      timestamp: new Date().toISOString()
-    });
+    console.error('AuthRoutes: Error during token refresh:', error);
+    console.error('AuthRoutes: Error stack:', error.stack);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Logout route
 router.post('/logout', async (req, res) => {
   console.log('AuthRoutes: POST /logout - Logout request received');
-  res.json({
-    message: 'Logged out successfully',
-    timestamp: new Date().toISOString()
-  });
+  
+  try {
+    // In a real application, you might want to blacklist the token
+    // For now, we'll just return a success message
+    res.json({ message: 'Logout successful' });
+  } catch (error) {
+    console.error('AuthRoutes: Error during logout:', error);
+    console.error('AuthRoutes: Error stack:', error.stack);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 console.log('AuthRoutes: Module loaded successfully');

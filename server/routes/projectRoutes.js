@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const sharp = require('sharp');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const ProjectService = require('../services/projectService');
@@ -16,10 +17,59 @@ router.use((req, res, next) => {
   next();
 });
 
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '../../uploads/projects');
+console.log('ProjectRoutes: Checking uploads directory:', uploadsDir);
+
+if (!fs.existsSync(uploadsDir)) {
+  console.log('ProjectRoutes: Creating uploads directory:', uploadsDir);
+  fs.mkdirSync(uploadsDir, { recursive: true });
+} else {
+  console.log('ProjectRoutes: Uploads directory exists');
+}
+
+// Helper function to get local file path from URL or relative path
+const getLocalFilePath = (imageUrl) => {
+  if (!imageUrl) return null;
+
+  // If it's a full URL, extract the path part
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    const url = new URL(imageUrl);
+    // Fix: Use server/uploads path instead of root uploads
+    return path.join(__dirname, '..', url.pathname);
+  }
+
+  // If it's already a relative path, use it directly
+  // Fix: Use server/uploads path instead of root uploads
+  return path.join(__dirname, '..', imageUrl);
+};
+
+// Helper function to resize image
+const resizeImage = async (inputPath, outputPath, options = {}) => {
+  const { width = 800, height = 600, quality = 85 } = options;
+  
+  try {
+    await sharp(inputPath)
+      .resize(width, height, {
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .jpeg({ quality })
+      .toFile(outputPath);
+    
+    console.log('ProjectRoutes: Image resized successfully:', outputPath);
+    return true;
+  } catch (error) {
+    console.error('ProjectRoutes: Error resizing image:', error);
+    return false;
+  }
+};
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, '../../uploads/projects');
+    // Changed to match the static server path: server/uploads/projects
+    const uploadDir = path.join(__dirname, '../uploads/projects');
     console.log('ProjectRoutes: Upload directory:', uploadDir);
 
     // Create directory if it doesn't exist
@@ -39,20 +89,30 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 10 * 1024 * 1024 // 10MB limit (increased for processing)
   },
   fileFilter: (req, file, cb) => {
     console.log('ProjectRoutes: File filter - mimetype:', file.mimetype);
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    console.log('ProjectRoutes: File filter - originalname:', file.originalname);
+
+    // Updated to include SVG files
+    const allowedTypes = /jpeg|jpg|png|gif|webp|svg/;
+    const allowedMimeTypes = /^image\/(jpeg|jpg|png|gif|webp|svg\+xml)$/;
+
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
+    const mimetype = allowedMimeTypes.test(file.mimetype);
+
+    console.log('ProjectRoutes: File filter - extension test:', extname);
+    console.log('ProjectRoutes: File filter - mimetype test:', mimetype);
 
     if (mimetype && extname) {
       console.log('ProjectRoutes: File accepted');
       return cb(null, true);
     } else {
       console.log('ProjectRoutes: File rejected - invalid type');
-      cb(new Error('Only image files are allowed'));
+      console.log('ProjectRoutes: Allowed extensions: jpeg, jpg, png, gif, webp, svg');
+      console.log('ProjectRoutes: Allowed mimetypes: image/jpeg, image/jpg, image/png, image/gif, image/webp, image/svg+xml');
+      cb(new Error(`File type not allowed. Uploaded: ${file.mimetype}. Allowed: image/jpeg, image/png, image/gif, image/webp, image/svg+xml`));
     }
   }
 });
@@ -64,7 +124,9 @@ router.post('/upload', auth, upload.single('image'), async (req, res) => {
   console.log('ProjectRoutes: File info:', req.file ? {
     filename: req.file.filename,
     size: req.file.size,
-    mimetype: req.file.mimetype
+    mimetype: req.file.mimetype,
+    path: req.file.path,
+    destination: req.file.destination
   } : 'No file');
 
   try {
@@ -73,8 +135,96 @@ router.post('/upload', auth, upload.single('image'), async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const imageUrl = `/uploads/projects/${req.file.filename}`;
-    console.log('ProjectRoutes: Image uploaded successfully:', imageUrl);
+    // Verify file was actually saved
+    const filePath = req.file.path;
+    console.log('ProjectRoutes: Checking if file exists at:', filePath);
+    console.log('ProjectRoutes: File absolute path:', path.resolve(filePath));
+
+    if (!fs.existsSync(filePath)) {
+      console.error('ProjectRoutes: File was not saved properly:', filePath);
+      return res.status(500).json({ error: 'File upload failed - file not saved' });
+    }
+
+    const fileStats = fs.statSync(filePath);
+    console.log('ProjectRoutes: File saved successfully, size:', fileStats.size, 'bytes');
+    console.log('ProjectRoutes: File mimetype:', req.file.mimetype);
+    console.log('ProjectRoutes: Is SVG file:', req.file.mimetype.includes('svg'));
+
+    // Process image if it's not SVG (SVG files don't need resizing)
+    let finalImagePath = filePath;
+    const isImageProcessable = !req.file.mimetype.includes('svg');
+    console.log('ProjectRoutes: Should process image:', isImageProcessable);
+
+    if (isImageProcessable) {
+      const resizedFilename = 'resized-' + req.file.filename.replace(path.extname(req.file.filename), '.jpg');
+      const resizedPath = path.join(path.dirname(filePath), resizedFilename);
+
+      console.log('ProjectRoutes: Original file path:', filePath);
+      console.log('ProjectRoutes: Resized file path:', resizedPath);
+      console.log('ProjectRoutes: Resizing image to:', resizedPath);
+
+      const resizeSuccess = await resizeImage(filePath, resizedPath, {
+        width: 1200,
+        height: 800,
+        quality: 85
+      });
+
+      console.log('ProjectRoutes: Resize operation result:', resizeSuccess);
+
+      if (resizeSuccess) {
+        // Verify resized file exists
+        if (fs.existsSync(resizedPath)) {
+          console.log('ProjectRoutes: Resized file created successfully');
+          const resizedStats = fs.statSync(resizedPath);
+          console.log('ProjectRoutes: Resized file size:', resizedStats.size, 'bytes');
+          
+          // Delete original file and use resized version
+          fs.unlinkSync(filePath);
+          console.log('ProjectRoutes: Original file deleted');
+          finalImagePath = resizedPath;
+        } else {
+          console.error('ProjectRoutes: Resized file was not created');
+          finalImagePath = filePath;
+        }
+      } else {
+        console.log('ProjectRoutes: Resize failed, using original image');
+      }
+    } else {
+      console.log('ProjectRoutes: SVG file - skipping resize, using original');
+    }
+
+    const imageUrl = `/uploads/projects/${path.basename(finalImagePath)}`;
+    console.log('ProjectRoutes: Final image URL:', imageUrl);
+    console.log('ProjectRoutes: Final image path:', finalImagePath);
+
+    // Test if the file can be accessed via the static route
+    const staticServePath = path.join(__dirname, '..', imageUrl);
+    console.log('ProjectRoutes: Static serve path:', staticServePath);
+    console.log('ProjectRoutes: Static serve path resolved:', path.resolve(staticServePath));
+
+    if (fs.existsSync(staticServePath)) {
+      console.log('ProjectRoutes: File accessible via static route');
+      const staticStats = fs.statSync(staticServePath);
+      console.log('ProjectRoutes: Static file size:', staticStats.size, 'bytes');
+    } else {
+      console.error('ProjectRoutes: File NOT accessible via static route');
+      console.error('ProjectRoutes: Expected static path:', staticServePath);
+      console.error('ProjectRoutes: Actual file path:', finalImagePath);
+      
+      // List files in the directory to debug
+      const uploadDir = path.join(__dirname, '../uploads/projects');
+      console.log('ProjectRoutes: Upload directory contents:');
+      try {
+        const files = fs.readdirSync(uploadDir);
+        files.forEach(file => {
+          const fullPath = path.join(uploadDir, file);
+          const stats = fs.statSync(fullPath);
+          console.log('ProjectRoutes: - File:', file, 'Size:', stats.size, 'bytes');
+        });
+      } catch (error) {
+        console.error('ProjectRoutes: Error reading upload directory:', error);
+      }
+    }
 
     res.json({ imageUrl });
   } catch (error) {
@@ -120,6 +270,27 @@ router.get('/', auth, async (req, res) => {
     console.log('ProjectRoutes: Calling ProjectService.getProjectsByUserId...');
     const projects = await ProjectService.getProjectsByUserId(req.user.id);
     console.log('ProjectRoutes: Projects retrieved:', projects.length, 'projects');
+
+    // Verify image files exist for each project
+    projects.forEach(project => {
+      if (project.thumbnailUrl) {
+        const imagePath = getLocalFilePath(project.thumbnailUrl);
+        const exists = fs.existsSync(imagePath);
+        console.log(`ProjectRoutes: Project ${project._id} thumbnail exists:`, exists, 'Path:', imagePath);
+        if (!exists) {
+          console.warn(`ProjectRoutes: WARNING - Missing thumbnail for project ${project._id}: ${project.thumbnailUrl}`);
+        }
+      }
+      if (project.bannerUrl) {
+        const imagePath = getLocalFilePath(project.bannerUrl);
+        const exists = fs.existsSync(imagePath);
+        console.log(`ProjectRoutes: Project ${project._id} banner exists:`, exists, 'Path:', imagePath);
+        if (!exists) {
+          console.warn(`ProjectRoutes: WARNING - Missing banner for project ${project._id}: ${project.bannerUrl}`);
+        }
+      }
+    });
+
     console.log('ProjectRoutes: Sending response with projects data');
     res.json({ projects });
   } catch (error) {
@@ -141,6 +312,24 @@ router.get('/:id', auth, async (req, res) => {
     if (!project) {
       console.log('ProjectRoutes: Project not found');
       return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Verify image files exist for this project
+    if (project.thumbnailUrl) {
+      const imagePath = getLocalFilePath(project.thumbnailUrl);
+      const exists = fs.existsSync(imagePath);
+      console.log(`ProjectRoutes: Project ${project._id} thumbnail exists:`, exists, 'Path:', imagePath);
+      if (!exists) {
+        console.warn(`ProjectRoutes: WARNING - Missing thumbnail for project ${project._id}: ${project.thumbnailUrl}`);
+      }
+    }
+    if (project.bannerUrl) {
+      const imagePath = getLocalFilePath(project.bannerUrl);
+      const exists = fs.existsSync(imagePath);
+      console.log(`ProjectRoutes: Project ${project._id} banner exists:`, exists, 'Path:', imagePath);
+      if (!exists) {
+        console.warn(`ProjectRoutes: WARNING - Missing banner for project ${project._id}: ${project.bannerUrl}`);
+      }
     }
 
     console.log('ProjectRoutes: Project retrieved:', project.title);

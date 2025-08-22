@@ -15,7 +15,14 @@ import {
   Newspaper,
   Clock,
   Tag,
-  Building2
+  Building2,
+  Edit,
+  Globe,
+  Code2,
+  BookOpen,
+  Rocket,
+  Terminal,
+  GraduationCap
 } from 'lucide-react';
 import { getProject, Project } from '../api/projects';
 
@@ -42,14 +49,8 @@ export function ProjectDetail() {
       try {
         console.log('ProjectDetail: Fetching project details for ID:', id);
         setLoading(true);
-        const response = await getProject(id) as { project: Project };
+        const response = await getProject(id);
         console.log('ProjectDetail: Project details fetched successfully:', response.project);
-        console.log('ProjectDetail: Checking for user-requested features:', {
-          hasMediaCoverage: !!(response.project.mediaCoverage && response.project.mediaCoverage.length > 0),
-          hasPaperUrl: !!response.project.paperUrl,
-          hasEnthusiasmLevel: !!(response.project as any).enthusiasmLevel,
-          mediaCoverageCount: response.project.mediaCoverage?.length || 0
-        });
         setProject(response.project);
       } catch (error) {
         console.error('ProjectDetail: Error fetching project details:', error);
@@ -96,8 +97,8 @@ export function ProjectDetail() {
   };
 
   const handleBackClick = () => {
-    console.log('ProjectDetail: Navigating back to project tracker');
-    navigate('/project-tracker');
+    console.log('ProjectDetail: Navigating back to projects');
+    navigate('/projects');
   };
 
   const handleExternalLink = (url: string, type: string) => {
@@ -126,7 +127,7 @@ export function ProjectDetail() {
           <p className="text-gray-600 mb-6">The project you're looking for doesn't exist.</p>
           <Button onClick={handleBackClick}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Project Tracker
+            Back to Projects
           </Button>
         </div>
       </div>
@@ -139,27 +140,65 @@ export function ProjectDetail() {
       <div className="flex items-center gap-4 mb-8">
         <Button variant="outline" onClick={handleBackClick}>
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Project Tracker
+          Back to Projects
         </Button>
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{project.title}</h1>
           <p className="text-gray-600">{project.description}</p>
         </div>
         <Button onClick={() => navigate(`/projects/edit/${project._id}`)}>
+          <Edit className="w-4 h-4 mr-2" />
           Edit Project
         </Button>
       </div>
 
       {/* Project Banner/Thumbnail */}
-      {(project.bannerUrl || project.thumbnailUrl) && (
+      {(project.bannerUrl || project.thumbnailUrl || project.imageUrl) && (
         <div className="mb-8">
           <Card>
-            <CardContent className="p-6">
-              <div className="aspect-video bg-gray-50 rounded-lg overflow-hidden flex items-center justify-center">
+            <CardContent className="p-0">
+              <div className="w-full overflow-hidden rounded-lg">
                 <img
-                  src={project.bannerUrl || project.thumbnailUrl}
+                  src={project.bannerUrl || project.thumbnailUrl || project.imageUrl}
                   alt={project.title}
-                  className="max-w-full max-h-full object-contain"
+                  className="w-full h-auto object-cover"
+                  style={{
+                    minHeight: '300px',
+                    maxHeight: '60vh',
+                    objectFit: 'cover'
+                  }}
+                  onLoad={(e) => {
+                    const imgElement = e.currentTarget;
+                    console.log('ProjectDetail: Image loaded successfully:', imgElement.src);
+                    console.log('ProjectDetail: Image natural dimensions:', imgElement.naturalWidth, 'x', imgElement.naturalHeight);
+                    console.log('ProjectDetail: Image display dimensions:', imgElement.width, 'x', imgElement.height);
+                    console.log('ProjectDetail: Image complete:', imgElement.complete);
+                  }}
+                  onError={(e) => {
+                    const imgElement = e.currentTarget;
+                    console.error('ProjectDetail: Image failed to load:', imgElement.src);
+                    console.error('ProjectDetail: Image error event:', e);
+                    console.error('ProjectDetail: Image complete:', imgElement.complete);
+                    console.error('ProjectDetail: Image natural dimensions:', imgElement.naturalWidth, 'x', imgElement.naturalHeight);
+
+                    // Try to fetch the image directly to see what's happening
+                    fetch(imgElement.src)
+                      .then(response => {
+                        console.error('ProjectDetail: Direct fetch response status:', response.status);
+                        console.error('ProjectDetail: Direct fetch response headers:', response.headers);
+                        return response.blob();
+                      })
+                      .then(blob => {
+                        console.error('ProjectDetail: Direct fetch blob size:', blob.size);
+                        console.error('ProjectDetail: Direct fetch blob type:', blob.type);
+                      })
+                      .catch(fetchError => {
+                        console.error('ProjectDetail: Direct fetch failed:', fetchError);
+                      });
+
+                    // Show error message or fallback
+                    e.currentTarget.style.display = 'none';
+                  }}
                 />
               </div>
             </CardContent>
@@ -193,12 +232,11 @@ export function ProjectDetail() {
                 </div>
               )}
 
-              {/* Enthusiasm Level - User mentioned this was implemented well */}
-              {(project as any).enthusiasmLevel && (
+              {project.enthusiasmLevel && (
                 <div>
                   <span className="text-sm font-medium">Enthusiasm Level:</span>
                   <Badge variant="outline" className="ml-2">
-                    {(project as any).enthusiasmLevel}
+                    {project.enthusiasmLevel}
                   </Badge>
                 </div>
               )}
@@ -253,10 +291,13 @@ export function ProjectDetail() {
             </Card>
           )}
 
-          {/* Project Links */}
+          {/* Project Links - Enhanced with better icons and styling */}
           <Card>
             <CardHeader>
-              <CardTitle>Project Links</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <ExternalLink className="w-5 h-5" />
+                Project Links
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -264,10 +305,11 @@ export function ProjectDetail() {
                   <Button
                     variant="outline"
                     onClick={() => handleExternalLink(project.liveUrl!, 'live demo')}
-                    className="w-full"
+                    className="w-full h-16 flex flex-col items-center justify-center gap-2 hover:bg-blue-50 hover:border-blue-300 transition-colors group"
+                    title="View Live Demo"
                   >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Live Demo
+                    <Rocket className="w-6 h-6 text-blue-600 group-hover:scale-110 transition-transform" />
+                    <span className="text-blue-600 font-medium">Live Demo</span>
                   </Button>
                 )}
 
@@ -275,29 +317,38 @@ export function ProjectDetail() {
                   <Button
                     variant="outline"
                     onClick={() => handleExternalLink(project.githubUrl!, 'GitHub repository')}
-                    className="w-full"
+                    className="w-full h-16 flex flex-col items-center justify-center gap-2 hover:bg-gray-50 hover:border-gray-400 transition-colors group"
+                    title="View Source Code"
                   >
-                    <Github className="w-4 h-4 mr-2" />
-                    Source Code
+                    <Terminal className="w-6 h-6 text-gray-700 group-hover:scale-110 transition-transform" />
+                    <span className="text-gray-700 font-medium">Source Code</span>
                   </Button>
                 )}
 
-                {/* Paper button - User specifically requested this */}
                 {project.paperUrl && (
                   <Button
                     variant="outline"
                     onClick={() => handleExternalLink(project.paperUrl!, 'research paper')}
-                    className="w-full"
+                    className="w-full h-16 flex flex-col items-center justify-center gap-2 hover:bg-purple-50 hover:border-purple-300 transition-colors group"
+                    title="Read Research Paper"
                   >
-                    <FileText className="w-4 h-4 mr-2" />
-                    Paper
+                    <GraduationCap className="w-6 h-6 text-purple-600 group-hover:scale-110 transition-transform" />
+                    <span className="text-purple-600 font-medium">Research Paper</span>
                   </Button>
                 )}
               </div>
+
+              {/* Show message if no links are available */}
+              {!project.liveUrl && !project.githubUrl && !project.paperUrl && (
+                <div className="text-center py-8 text-gray-500">
+                  <ExternalLink className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>No external links available for this project</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Media Coverage Section - User specifically requested this */}
+          {/* Media Coverage Section */}
           {project.mediaCoverage && project.mediaCoverage.length > 0 && (
             <Card>
               <CardHeader>
@@ -435,6 +486,56 @@ export function ProjectDetail() {
               </CardContent>
             </Card>
           )}
+
+          {/* Quick Actions - Enhanced with better icons */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {project.githubUrl && (
+                <Button
+                  variant="outline"
+                  className="w-full justify-start h-12 hover:bg-gray-50 hover:border-gray-400 transition-colors group"
+                  onClick={() => handleExternalLink(project.githubUrl!, 'GitHub')}
+                  title="View Source Code"
+                >
+                  <Terminal className="w-5 h-5 mr-3 text-gray-700 group-hover:scale-110 transition-transform" />
+                  <span className="text-gray-700 font-medium">View Source Code</span>
+                </Button>
+              )}
+              {project.liveUrl && (
+                <Button
+                  variant="outline"
+                  className="w-full justify-start h-12 hover:bg-blue-50 hover:border-blue-300 transition-colors group"
+                  onClick={() => handleExternalLink(project.liveUrl!, 'Live Demo')}
+                  title="View Live Demo"
+                >
+                  <Rocket className="w-5 h-5 mr-3 text-blue-600 group-hover:scale-110 transition-transform" />
+                  <span className="text-blue-600 font-medium">View Live Demo</span>
+                </Button>
+              )}
+              {project.paperUrl && (
+                <Button
+                  variant="outline"
+                  className="w-full justify-start h-12 hover:bg-purple-50 hover:border-purple-300 transition-colors group"
+                  onClick={() => handleExternalLink(project.paperUrl!, 'Paper')}
+                  title="Read Research Paper"
+                >
+                  <GraduationCap className="w-5 h-5 mr-3 text-purple-600 group-hover:scale-110 transition-transform" />
+                  <span className="text-purple-600 font-medium">Read Research Paper</span>
+                </Button>
+              )}
+
+              {/* Show message if no quick actions are available */}
+              {!project.githubUrl && !project.liveUrl && !project.paperUrl && (
+                <div className="text-center py-4 text-gray-500">
+                  <ExternalLink className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No quick actions available</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

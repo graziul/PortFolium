@@ -10,6 +10,8 @@ import { BlankPage } from "./pages/BlankPage"
 import { Home } from "./pages/Home"
 import { Projects } from "./pages/Projects"
 import { ProjectTracker } from "./pages/ProjectTracker"
+import { ProjectDetail } from "./pages/ProjectDetail"
+import { ProjectForm } from "./pages/ProjectForm"
 import { Blog } from "./pages/Blog"
 import { BlogPostPage } from "./pages/BlogPost"
 import { Skills } from "./pages/Skills"
@@ -34,6 +36,9 @@ function App() {
             <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
               <Route index element={<Home />} />
               <Route path="projects" element={<Projects />} />
+              <Route path="projects/new" element={<ProjectForm />} />
+              <Route path="projects/edit/:id" element={<ProjectForm />} />
+              <Route path="projects/:id" element={<ProjectDetail />} />
               <Route path="project-tracker" element={<ProjectTracker />} />
               <Route path="blog" element={<Blog />} />
               <Route path="blog/:id" element={<BlogPostPage />} />

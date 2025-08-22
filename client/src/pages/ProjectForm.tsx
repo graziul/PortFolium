@@ -20,6 +20,7 @@ interface ProjectFormData {
   technologies: string[];
   liveUrl: string;
   githubUrl: string;
+  paperUrl: string;
   thumbnailUrl: string;
   bannerUrl: string;
   archived: boolean;
@@ -48,6 +49,7 @@ export const ProjectForm = () => {
     technologies: [],
     liveUrl: '',
     githubUrl: '',
+    paperUrl: '',
     thumbnailUrl: '',
     bannerUrl: '',
     archived: false,
@@ -87,6 +89,7 @@ export const ProjectForm = () => {
           technologies: response.project.technologies || [],
           liveUrl: response.project.liveUrl || '',
           githubUrl: response.project.githubUrl || '',
+          paperUrl: response.project.paperUrl || '',
           thumbnailUrl: response.project.thumbnailUrl || '',
           bannerUrl: response.project.bannerUrl || '',
           archived: response.project.archived || false,
@@ -160,12 +163,25 @@ export const ProjectForm = () => {
 
       if (response.imageUrl) {
         const fieldName = imageType === 'thumbnail' ? 'thumbnailUrl' : 'bannerUrl';
+        console.log('ProjectForm: Setting image URL for', fieldName, ':', response.imageUrl);
+
         setFormData(prev => ({
           ...prev,
           [fieldName]: response.imageUrl
         }));
-        console.log('ProjectForm: Image URL set:', response.imageUrl);
+
+        console.log('ProjectForm: Image URL set successfully');
         toast.success(`${imageType} uploaded successfully`);
+
+        // Test if image can be loaded
+        const img = new Image();
+        img.onload = () => {
+          console.log('ProjectForm: Image preview loaded successfully:', response.imageUrl);
+        };
+        img.onerror = (error) => {
+          console.error('ProjectForm: Image preview failed to load:', response.imageUrl, error);
+        };
+        img.src = response.imageUrl;
       }
     } catch (error) {
       console.error('ProjectForm: Error uploading image:', error);
@@ -352,26 +368,36 @@ export const ProjectForm = () => {
               </div>
             </div>
 
-            {/* URLs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* URLs - Updated to include all three link types */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="liveUrl">Live URL</Label>
+                <Label htmlFor="liveUrl">Demo URL</Label>
                 <Input
                   id="liveUrl"
                   type="url"
                   value={formData.liveUrl}
                   onChange={(e) => handleInputChange('liveUrl', e.target.value)}
-                  placeholder="https://your-project.com"
+                  placeholder="https://your-demo.com"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="githubUrl">GitHub URL</Label>
+                <Label htmlFor="githubUrl">Code URL</Label>
                 <Input
                   id="githubUrl"
                   type="url"
                   value={formData.githubUrl}
                   onChange={(e) => handleInputChange('githubUrl', e.target.value)}
                   placeholder="https://github.com/username/project"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="paperUrl">Paper URL</Label>
+                <Input
+                  id="paperUrl"
+                  type="url"
+                  value={formData.paperUrl}
+                  onChange={(e) => handleInputChange('paperUrl', e.target.value)}
+                  placeholder="https://arxiv.org/abs/..."
                 />
               </div>
             </div>

@@ -9,6 +9,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const multer = require('multer');
+const fs = require('fs');
 const { connectDatabase } = require('./config/database');
 
 // Import routes
@@ -27,13 +28,69 @@ console.log('Server: Starting PortFolium server...');
 console.log('Server: Environment:', process.env.NODE_ENV || 'development');
 console.log('Server: Port:', PORT);
 
+// Ensure uploads directories exist
+const uploadsDir = path.join(__dirname, 'uploads');
+const projectsUploadDir = path.join(__dirname, 'uploads/projects');
+
+console.log('Server: Checking uploads directories...');
+console.log('Server: Main uploads dir:', uploadsDir);
+console.log('Server: Projects uploads dir:', projectsUploadDir);
+
+if (!fs.existsSync(uploadsDir)) {
+  console.log('Server: Creating main uploads directory');
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+if (!fs.existsSync(projectsUploadDir)) {
+  console.log('Server: Creating projects uploads directory');
+  fs.mkdirSync(projectsUploadDir, { recursive: true });
+}
+
+console.log('Server: Uploads directories ready');
+
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Serve static files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve static files with logging
+app.use('/uploads', (req, res, next) => {
+  console.log('Server: Static file request received');
+  console.log('Server: Request URL:', req.url);
+  console.log('Server: Request method:', req.method);
+  console.log('Server: Request headers:', req.headers);
+  
+  const filePath = path.join(__dirname, 'uploads', req.url);
+  const resolvedPath = path.resolve(filePath);
+  
+  console.log('Server: Looking for file at:', filePath);
+  console.log('Server: Resolved file path:', resolvedPath);
+
+  if (fs.existsSync(filePath)) {
+    console.log('Server: File found, serving:', filePath);
+    const stats = fs.statSync(filePath);
+    console.log('Server: File size:', stats.size, 'bytes');
+    console.log('Server: File modified:', stats.mtime);
+  } else {
+    console.log('Server: File NOT found:', filePath);
+    
+    // List directory contents for debugging
+    const dirPath = path.dirname(filePath);
+    console.log('Server: Checking directory:', dirPath);
+    try {
+      if (fs.existsSync(dirPath)) {
+        const files = fs.readdirSync(dirPath);
+        console.log('Server: Directory contents:', files);
+      } else {
+        console.log('Server: Directory does not exist:', dirPath);
+      }
+    } catch (error) {
+      console.error('Server: Error reading directory:', error);
+    }
+  }
+
+  next();
+}, express.static(path.join(__dirname, 'uploads')));
 
 // Routes
 app.use('/api', indexRoutes);
@@ -75,6 +132,7 @@ const startServer = async () => {
     const server = app.listen(PORT, () => {
       console.log(`Server: PortFolium server running on port ${PORT}`);
       console.log(`Server: API available at http://localhost:${PORT}/api`);
+      console.log(`Server: Static files served from http://localhost:${PORT}/uploads`);
       console.log('Server: Server started successfully');
     });
 

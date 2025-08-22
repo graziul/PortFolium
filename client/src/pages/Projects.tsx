@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, ExternalLink, Github, Calendar, Clock, Users, Star, ArrowRight, FileText, Plus, Edit, Trash2 } from 'lucide-react';
+import { Search, Filter, ExternalLink, Github, Calendar, Clock, Users, Star, ArrowRight, FileText, Plus, Edit, Trash2, Rocket, Terminal, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,14 +32,14 @@ export function Projects() {
       console.log('Fetching projects...');
       const response = await getProjects();
       const allProjects = response.projects;
-      
+
       // Sort projects to show featured projects first
       const sortedProjects = allProjects.sort((a, b) => {
         if (a.featured && !b.featured) return -1;
         if (!a.featured && b.featured) return 1;
         return 0;
       });
-      
+
       setProjects(sortedProjects);
       setFilteredProjects(sortedProjects);
       console.log('Projects loaded successfully');
@@ -227,6 +227,40 @@ export function Projects() {
                   src={project.thumbnailUrl || project.thumbnail}
                   alt={project.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  style={{
+                    minHeight: '200px',
+                    maxHeight: '200px',
+                    objectFit: 'cover'
+                  }}
+                  onLoad={(e) => {
+                    const imgElement = e.currentTarget;
+                    console.log('Projects: Image loaded successfully:', imgElement.src);
+                    console.log('Projects: Image natural dimensions:', imgElement.naturalWidth, 'x', imgElement.naturalHeight);
+                    console.log('Projects: Image display dimensions:', imgElement.width, 'x', imgElement.height);
+                  }}
+                  onError={(e) => {
+                    const imgElement = e.currentTarget;
+                    console.error('Projects: Image failed to load:', imgElement.src);
+                    console.error('Projects: Image error event:', e);
+
+                    // Try to fetch the image directly
+                    fetch(imgElement.src)
+                      .then(response => {
+                        console.error('Projects: Direct fetch response status:', response.status);
+                        console.error('Projects: Direct fetch response headers:', response.headers);
+                        return response.blob();
+                      })
+                      .then(blob => {
+                        console.error('Projects: Direct fetch blob size:', blob.size);
+                        console.error('Projects: Direct fetch blob type:', blob.type);
+                      })
+                      .catch(fetchError => {
+                        console.error('Projects: Direct fetch failed:', fetchError);
+                      });
+
+                    // Set a fallback image or hide the image
+                    e.currentTarget.style.display = 'none';
+                  }}
                 />
                 <div className="absolute top-4 right-4 flex gap-2">
                   <Badge
@@ -340,26 +374,26 @@ export function Projects() {
 
                 <div className="flex gap-2">
                   {(project.liveUrl || project.demoUrl) && (
-                    <Button size="sm" variant="outline" className="flex-1" asChild>
+                    <Button size="sm" variant="outline" className="flex-1 hover:bg-blue-50 hover:border-blue-300 transition-colors group" asChild>
                       <a href={project.liveUrl || project.demoUrl} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Demo
+                        <Rocket className="h-3 w-3 mr-2 text-blue-600 group-hover:scale-110 transition-transform" />
+                        <span className="text-blue-600 font-medium">Demo</span>
                       </a>
                     </Button>
                   )}
                   {(project.githubUrl || project.codeUrl) && (
-                    <Button size="sm" variant="outline" className="flex-1" asChild>
+                    <Button size="sm" variant="outline" className="flex-1 hover:bg-gray-50 hover:border-gray-400 transition-colors group" asChild>
                       <a href={project.githubUrl || project.codeUrl} target="_blank" rel="noopener noreferrer">
-                        <Github className="h-4 w-4 mr-2" />
-                        Code
+                        <Terminal className="h-3 w-3 mr-2 text-gray-700 group-hover:scale-110 transition-transform" />
+                        <span className="text-gray-700 font-medium">Code</span>
                       </a>
                     </Button>
                   )}
                   {project.paperUrl && (
-                    <Button size="sm" variant="outline" className="flex-1" asChild>
+                    <Button size="sm" variant="outline" className="flex-1 hover:bg-purple-50 hover:border-purple-300 transition-colors group" asChild>
                       <a href={project.paperUrl} target="_blank" rel="noopener noreferrer">
-                        <FileText className="h-4 w-4 mr-2" />
-                        Paper
+                        <GraduationCap className="h-3 w-3 mr-2 text-purple-600 group-hover:scale-110 transition-transform" />
+                        <span className="text-purple-600 font-medium">Paper</span>
                       </a>
                     </Button>
                   )}

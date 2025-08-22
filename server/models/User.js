@@ -1,137 +1,134 @@
 const mongoose = require('mongoose');
+const { validatePassword } = require('../utils/password');
 
-const { validatePassword, isPasswordHash } = require('../utils/password.js');
-const {randomUUID} = require("crypto");
+console.log('User Model: Loading User schema...');
 
-const experienceSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true
-  },
-  company: {
-    type: String,
-    required: true
-  },
-  location: String,
-  startDate: {
-    type: Date,
-    required: true
-  },
-  endDate: Date,
-  current: {
-    type: Boolean,
-    default: false
-  },
-  description: String,
-  achievements: [String]
-}, {
-  _id: true
-});
-
-const educationSchema = new mongoose.Schema({
-  degree: {
-    type: String,
-    required: true
-  },
-  institution: {
-    type: String,
-    required: true
-  },
-  location: String,
-  startDate: {
-    type: Date,
-    required: true
-  },
-  endDate: Date,
-  gpa: String,
-  description: String
-}, {
-  _id: true
-});
-
-const schema = new mongoose.Schema({
+const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
-    index: true,
     unique: true,
+    trim: true,
     lowercase: true,
+    validate: {
+      validator: function(email) {
+        return /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(email);
+      },
+      message: 'Please enter a valid email address'
+    }
   },
   password: {
     type: String,
     required: true,
-    validate: { validator: isPasswordHash, message: 'Invalid password hash' },
+    minlength: 6,
+    validate: {
+      validator: function(password) {
+        const validation = validatePassword(password);
+        return validation.isValid;
+      },
+      message: 'Password must be at least 8 characters long and contain uppercase, lowercase, number, and special character'
+    }
   },
   name: {
     type: String,
-    default: '',
+    required: true,
+    trim: true,
+    maxlength: 50
   },
   bio: {
     type: String,
-    default: '',
+    trim: true,
+    maxlength: 500
   },
   location: {
     type: String,
-    default: '',
+    trim: true,
+    maxlength: 100
   },
   phone: {
     type: String,
-    default: '',
+    trim: true
   },
-  socialLinks: {
-    linkedin: {
+  experiences: [{
+    title: {
       type: String,
-      default: '',
+      required: true,
+      trim: true
     },
-    github: {
+    company: {
       type: String,
-      default: '',
+      required: true,
+      trim: true
     },
-    twitter: {
+    location: {
       type: String,
-      default: '',
+      trim: true
     },
-    website: {
+    startDate: {
+      type: Date,
+      required: true
+    },
+    endDate: {
+      type: Date
+    },
+    current: {
+      type: Boolean,
+      default: false
+    },
+    description: {
       type: String,
-      default: '',
+      trim: true
+    }
+  }],
+  education: [{
+    institution: {
+      type: String,
+      required: true,
+      trim: true
     },
-  },
-  experiences: [experienceSchema],
-  education: [educationSchema],
-  certifications: [String],
-  languages: [String],
-  createdAt: {
-    type: Date,
-    default: Date.now,
-    immutable: true,
-  },
-  lastLoginAt: {
-    type: Date,
-    default: Date.now,
-  },
-  isActive: {
-    type: Boolean,
-    default: true,
-  },
-  refreshToken: {
-    type: String,
-    unique: true,
-    index: true,
-    default: () => randomUUID(),
-  },
+    degree: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    field: {
+      type: String,
+      trim: true
+    },
+    startDate: {
+      type: Date,
+      required: true
+    },
+    endDate: {
+      type: Date
+    },
+    current: {
+      type: Boolean,
+      default: false
+    },
+    description: {
+      type: String,
+      trim: true
+    }
+  }]
 }, {
-  versionKey: false,
+  timestamps: true
 });
 
-schema.set('toJSON', {
-  /* eslint-disable */
-  transform: (doc, ret, options) => {
-    delete ret.password;
-    return ret;
-  },
-  /* eslint-enable */
-});
+// Index for efficient queries
+userSchema.index({ email: 1 });
 
-const User = mongoose.model('User', schema);
+// Transform output to remove password and add id
+userSchema.methods.toJSON = function() {
+  const user = this.toObject();
+  delete user.password;
+  user.id = user._id;
+  return user;
+};
 
+console.log('User Model: Schema created successfully');
+
+const User = mongoose.model('User', userSchema);
+
+console.log('User Model: Model exported successfully');
 module.exports = User;
