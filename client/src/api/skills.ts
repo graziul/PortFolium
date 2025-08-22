@@ -8,6 +8,10 @@ export interface Skill {
   yearsOfExperience: number;
   userId: string;
   projects: string[];
+  description?: string;
+  relatedSkills?: string[];
+  certifications?: string[];
+  lastUsed?: string;
   createdAt: string;
   updatedAt: string;
 }

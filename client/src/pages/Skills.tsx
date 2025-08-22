@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Award, Calendar, Code, Palette, Database, Globe, Smartphone, Brain, Zap, Target, Clock, Users, Briefcase } from 'lucide-react';
+import { TrendingUp, Award, Calendar, Code, Palette, Database, Globe, Smartphone, Brain, Zap, Target, Clock, Users, Briefcase, Plus, Edit, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getSkills, Skill } from '@/api/skills';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { getSkills, deleteSkill, Skill } from '@/api/skills';
+import { SkillForm } from '@/components/SkillForm';
 import { useToast } from '@/hooks/useToast';
 
 const categoryIcons = {
@@ -54,27 +57,45 @@ export function Skills() {
   const [hoveredSkill, setHoveredSkill] = useState<string | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchSkills = async () => {
-      try {
-        console.log('Fetching skills...');
-        const response = await getSkills();
-        setSkills((response as any).skills);
-        console.log('Skills loaded successfully');
-      } catch (error) {
-        console.error('Error loading skills:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load skills. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchSkills = async () => {
+    try {
+      console.log('Fetching skills...');
+      const response = await getSkills();
+      setSkills(response.skills);
+      console.log('Skills loaded successfully');
+    } catch (error: any) {
+      console.error('Error loading skills:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load skills. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchSkills();
-  }, [toast]);
+  }, []);
+
+  const handleDeleteSkill = async (skillId: string, skillName: string) => {
+    try {
+      await deleteSkill(skillId);
+      toast({
+        title: "Success",
+        description: `${skillName} has been deleted successfully`,
+      });
+      fetchSkills(); // Refresh the skills list
+    } catch (error: any) {
+      console.error('Error deleting skill:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete skill",
+        variant: "destructive",
+      });
+    }
+  };
 
   const technicalSkills = skills.filter(skill => technicalCategories.includes(skill.category));
   const nonTechnicalSkills = skills.filter(skill => nonTechnicalCategories.includes(skill.category));
@@ -243,6 +264,41 @@ export function Skills() {
                         <Badge variant="secondary" className="text-xs">
                           {skill.yearsOfExperience}y
                         </Badge>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <SkillForm
+                            skill={skill}
+                            onSuccess={fetchSkills}
+                            trigger={
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            }
+                          />
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive">
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Skill</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{skill.name}"? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteSkill(skill._id, skill.name)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     </div>
 
@@ -297,9 +353,12 @@ export function Skills() {
         transition={{ duration: 0.6 }}
         className="text-center"
       >
-        <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Skills & Expertise
-        </h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Skills & Expertise
+          </h1>
+          <SkillForm onSuccess={fetchSkills} />
+        </div>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
           A comprehensive overview of my technical skills, showcasing depth of experience and breadth of knowledge across disciplines.
         </p>
@@ -348,29 +407,43 @@ export function Skills() {
       </motion.div>
 
       {/* Skills Distribution with Tabs */}
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.6 }}
-        className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20 rounded-3xl p-8"
-      >
-        <h2 className="text-2xl font-bold text-center mb-8">Skills Distribution</h2>
-        
-        <Tabs defaultValue="technical" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-8">
-            <TabsTrigger value="technical">Technical Skills</TabsTrigger>
-            <TabsTrigger value="non-technical">Non-Technical Skills</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="technical">
-            <PieChart data={technicalPieChartData} />
-          </TabsContent>
-          
-          <TabsContent value="non-technical">
-            <PieChart data={nonTechnicalPieChartData} />
-          </TabsContent>
-        </Tabs>
-      </motion.section>
+      {(technicalPieChartData.length > 0 || nonTechnicalPieChartData.length > 0) && (
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.6 }}
+          className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20 rounded-3xl p-8"
+        >
+          <h2 className="text-2xl font-bold text-center mb-8">Skills Distribution</h2>
+
+          <Tabs defaultValue="technical" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-8">
+              <TabsTrigger value="technical">Technical Skills</TabsTrigger>
+              <TabsTrigger value="non-technical">Non-Technical Skills</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="technical">
+              {technicalPieChartData.length > 0 ? (
+                <PieChart data={technicalPieChartData} />
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No technical skills added yet. Click "Add Skill" to get started!
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="non-technical">
+              {nonTechnicalPieChartData.length > 0 ? (
+                <PieChart data={nonTechnicalPieChartData} />
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No non-technical skills added yet. Click "Add Skill" to get started!
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </motion.section>
+      )}
 
       {/* Skills by Category - Enhanced Layout with Tabs */}
       <Tabs defaultValue="technical" className="w-full">
@@ -378,62 +451,82 @@ export function Skills() {
           <TabsTrigger value="technical">Technical Skills</TabsTrigger>
           <TabsTrigger value="non-technical">Non-Technical Skills</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="technical">
-          <SkillsGrid skillsByCategory={technicalSkillsByCategory} cardColors={categoryColors} />
+          {Object.keys(technicalSkillsByCategory).length > 0 ? (
+            <SkillsGrid skillsByCategory={technicalSkillsByCategory} cardColors={categoryColors} />
+          ) : (
+            <div className="text-center py-12">
+              <Code className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Technical Skills Yet</h3>
+              <p className="text-muted-foreground mb-4">Start building your technical skills portfolio</p>
+              <SkillForm onSuccess={fetchSkills} />
+            </div>
+          )}
         </TabsContent>
-        
+
         <TabsContent value="non-technical">
-          <SkillsGrid skillsByCategory={nonTechnicalSkillsByCategory} cardColors={categoryColors} />
+          {Object.keys(nonTechnicalSkillsByCategory).length > 0 ? (
+            <SkillsGrid skillsByCategory={nonTechnicalSkillsByCategory} cardColors={categoryColors} />
+          ) : (
+            <div className="text-center py-12">
+              <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Non-Technical Skills Yet</h3>
+              <p className="text-muted-foreground mb-4">Add your leadership and soft skills</p>
+              <SkillForm onSuccess={fetchSkills} />
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
       {/* Experience Timeline */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.2, duration: 0.6 }}
-        className="space-y-6"
-      >
-        <h2 className="text-2xl font-bold text-center">Skill Development Journey</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {['expert', 'advanced', 'intermediate', 'beginner'].map((level, index) => {
-            const levelSkills = skills.filter(s => s.experienceLevel === level);
-            return (
-              <motion.div
-                key={level}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 1.3 + index * 0.1, duration: 0.4 }}
-              >
-                <Card className="text-center bg-gradient-to-br from-white/80 to-white/40 dark:from-gray-900/80 dark:to-gray-900/40 backdrop-blur-sm border-white/40 hover:shadow-lg transition-all duration-300">
-                  <CardHeader className="pb-2">
-                    <div className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center text-white font-bold text-lg ${experienceLevelColors[level as keyof typeof experienceLevelColors]}`}>
-                      {levelSkills.length}
-                    </div>
-                    <CardTitle className="text-lg">{experienceLevelLabels[level as keyof typeof experienceLevelLabels]}</CardTitle>
-                    <CardDescription className="text-xs">Skills at this level</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex flex-wrap gap-1 justify-center">
-                      {levelSkills.slice(0, 3).map((skill) => (
-                        <Badge key={skill._id} variant="outline" className="text-xs">
-                          {skill.name}
-                        </Badge>
-                      ))}
-                      {levelSkills.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{levelSkills.length - 3}
-                        </Badge>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </div>
-      </motion.div>
+      {skills.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.2, duration: 0.6 }}
+          className="space-y-6"
+        >
+          <h2 className="text-2xl font-bold text-center">Skill Development Journey</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {['expert', 'advanced', 'intermediate', 'beginner'].map((level, index) => {
+              const levelSkills = skills.filter(s => s.experienceLevel === level);
+              return (
+                <motion.div
+                  key={level}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 1.3 + index * 0.1, duration: 0.4 }}
+                >
+                  <Card className="text-center bg-gradient-to-br from-white/80 to-white/40 dark:from-gray-900/80 dark:to-gray-900/40 backdrop-blur-sm border-white/40 hover:shadow-lg transition-all duration-300">
+                    <CardHeader className="pb-2">
+                      <div className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center text-white font-bold text-lg ${experienceLevelColors[level as keyof typeof experienceLevelColors]}`}>
+                        {levelSkills.length}
+                      </div>
+                      <CardTitle className="text-lg">{experienceLevelLabels[level as keyof typeof experienceLevelLabels]}</CardTitle>
+                      <CardDescription className="text-xs">Skills at this level</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="flex flex-wrap gap-1 justify-center">
+                        {levelSkills.slice(0, 3).map((skill) => (
+                          <Badge key={skill._id} variant="outline" className="text-xs">
+                            {skill.name}
+                          </Badge>
+                        ))}
+                        {levelSkills.length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{levelSkills.length - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }
