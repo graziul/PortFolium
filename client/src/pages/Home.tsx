@@ -1,3 +1,4 @@
+```
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Code, Briefcase, BookOpen, Users, Star, TrendingUp, Activity, GraduationCap, Building, UserCheck, Briefcase as BriefcaseIcon, Newspaper, Settings } from 'lucide-react';
@@ -10,6 +11,7 @@ import { getProjects, Project } from '@/api/projects';
 import { getBlogPosts, BlogPost } from '@/api/blog';
 import { getFeaturedSkills, Skill } from '@/api/skills';
 import { getHomeContent, HomeContent } from '@/api/homeContent';
+import { getCollaboratorStats } from '@/api/collaborators';
 import { HomeContentForm } from '@/components/HomeContentForm';
 import { useToast } from '@/hooks/useToast';
 import { Link, useNavigate } from 'react-router-dom';
@@ -20,11 +22,15 @@ export function Home() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [featuredSkills, setFeaturedSkills] = useState<Skill[]>([]);
   const [homeContent, setHomeContent] = useState<HomeContent | null>(null);
+  const [collaboratorStats, setCollaboratorStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [hoveredCollabCard, setHoveredCollabCard] = useState<string | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Define fallback image URL as a constant to avoid parsing issues
+  const defaultProfileImage = "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&crop=face";
 
   useEffect(() => {
     const fetchData = async () => {
@@ -65,6 +71,49 @@ export function Home() {
           });
         }
 
+        // Try to fetch collaborator stats from the API
+        try {
+          const statsResponse = await getCollaboratorStats();
+          console.log('Home: Collaborator stats fetched from API:', statsResponse.stats);
+
+          // Transform the stats array into the expected format
+          const transformedStats = {
+            academia: { total: 0, subcategories: { postdoc: 0, junior_faculty: 0, senior_faculty: 0 } },
+            industry: { total: 0, subcategories: { industry_tech: 0, industry_finance: 0, industry_healthcare: 0 } },
+            students: { total: 0, subcategories: { undergraduate: 0, graduate: 0 } },
+            others: { total: 0, subcategories: { professional_ethicist: 0, journalist: 0 } }
+          };
+
+          statsResponse.stats.forEach((stat: any) => {
+            const type = stat._id;
+            const count = stat.count;
+
+            if (['postdoc', 'junior_faculty', 'senior_faculty'].includes(type)) {
+              transformedStats.academia.total += count;
+              transformedStats.academia.subcategories[type as keyof typeof transformedStats.academia.subcategories] = count;
+            } else if (['industry_tech', 'industry_finance', 'industry_healthcare'].includes(type)) {
+              transformedStats.industry.total += count;
+              transformedStats.industry.subcategories[type as keyof typeof transformedStats.industry.subcategories] = count;
+            } else if (['undergraduate', 'graduate'].includes(type)) {
+              transformedStats.students.total += count;
+              transformedStats.students.subcategories[type as keyof typeof transformedStats.students.subcategories] = count;
+            } else if (['professional_ethicist', 'journalist'].includes(type)) {
+              transformedStats.others.total += count;
+              transformedStats.others.subcategories[type as keyof typeof transformedStats.others.subcategories] = count;
+            }
+          });
+
+          setCollaboratorStats(transformedStats);
+        } catch (statsError) {
+          console.log('Home: Collaborator stats not available, using defaults');
+          setCollaboratorStats({
+            academia: { total: 0, subcategories: { postdoc: 0, junior_faculty: 0, senior_faculty: 0 } },
+            industry: { total: 0, subcategories: { industry_tech: 0, industry_finance: 0, industry_healthcare: 0 } },
+            students: { total: 0, subcategories: { undergraduate: 0, graduate: 0 } },
+            others: { total: 0, subcategories: { professional_ethicist: 0, journalist: 0 } }
+          });
+        }
+
         console.log('Home page data loaded successfully');
       } catch (error) {
         console.error('Home: Error loading home page data:', error);
@@ -85,7 +134,7 @@ export function Home() {
   const inProgressProjects = projects.filter(p => p.status === 'in-progress').length;
 
   const formatSubcategoryName = (type: string) => {
-    const names = {
+    const names: Record<string, string> = {
       'postdoc': 'Postdocs',
       'junior_faculty': 'Junior Faculty',
       'senior_faculty': 'Senior Faculty',
@@ -97,7 +146,7 @@ export function Home() {
       'professional_ethicist': 'Ethicists',
       'journalist': 'Journalists'
     };
-    return names[type as keyof typeof names] || type;
+    return names[type] || type;
   };
 
   const scrollToCollaborators = () => {
@@ -124,6 +173,10 @@ export function Home() {
     navigate('/skills', { state: { highlightSkill: skillName } });
   };
 
+  const handleCollaboratorsClick = () => {
+    navigate('/projects', { state: { activeTab: 'collaborators' } });
+  };
+
   const handleEditSuccess = async () => {
     setShowEditDialog(false);
     // Refresh home content
@@ -147,8 +200,8 @@ export function Home() {
     );
   }
 
-  const totalCollaborators = homeContent?.collaboratorStats ?
-    Object.values(homeContent.collaboratorStats).reduce((sum, category) => sum + category.total, 0) : 0;
+  const totalCollaborators = collaboratorStats ?
+    Object.values(collaboratorStats).reduce((sum: number, category: any) => sum + category.total, 0) : 0;
 
   // Use coreExpertise from homeContent if available, otherwise fall back to featured skills
   const displayedExpertise = homeContent?.coreExpertise && homeContent.coreExpertise.length > 0
@@ -230,7 +283,7 @@ export function Home() {
           >
             <div className="text-center">
               <img
-                src={homeContent?.profileImageUrl ? `http://localhost:3000${homeContent.profileImageUrl}` : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&crop=face"}
+                src={homeContent?.profileImageUrl ? `http://localhost:3000${homeContent.profileImageUrl}` : defaultProfileImage}
                 alt="Profile"
                 className="w-40 h-40 rounded-full mx-auto mb-6 border-4 border-white shadow-xl"
               />
@@ -293,7 +346,7 @@ export function Home() {
 
         <Card
           className="group hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 border-purple-200 dark:border-purple-800 cursor-pointer"
-          onClick={scrollToCollaborators}
+          onClick={handleCollaboratorsClick}
         >
           <CardHeader className="text-center">
             <Users className="h-8 w-8 mx-auto text-purple-600 group-hover:scale-110 transition-transform" />
@@ -338,7 +391,7 @@ export function Home() {
             <CardHeader className="pb-2">
               <GraduationCap className="h-8 w-8 mx-auto text-blue-600 mb-2" />
               <CardTitle className="text-2xl text-blue-700 dark:text-blue-300">
-                {homeContent?.collaboratorStats?.academia?.total || 0}
+                {collaboratorStats?.academia?.total || 0}
               </CardTitle>
               <CardDescription className="text-xs">Academia</CardDescription>
               <motion.div
@@ -350,12 +403,12 @@ export function Home() {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                {hoveredCollabCard === 'academia' && homeContent?.collaboratorStats?.academia && (
+                {hoveredCollabCard === 'academia' && collaboratorStats?.academia && (
                   <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                    {Object.entries(homeContent.collaboratorStats.academia.subcategories).map(([type, count]) => (
+                    {Object.entries(collaboratorStats.academia.subcategories).map(([type, count]) => (
                       <div key={type} className="flex justify-between">
                         <span>{formatSubcategoryName(type)}:</span>
-                        <span>{count}</span>
+                        <span>{count as number}</span>
                       </div>
                     ))}
                   </div>
@@ -372,7 +425,7 @@ export function Home() {
             <CardHeader className="pb-2">
               <BriefcaseIcon className="h-8 w-8 mx-auto text-green-600 mb-2" />
               <CardTitle className="text-2xl text-green-700 dark:text-green-300">
-                {homeContent?.collaboratorStats?.industry?.total || 0}
+                {collaboratorStats?.industry?.total || 0}
               </CardTitle>
               <CardDescription className="text-xs">Industry</CardDescription>
               <motion.div
@@ -384,12 +437,12 @@ export function Home() {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                {hoveredCollabCard === 'industry' && homeContent?.collaboratorStats?.industry && (
+                {hoveredCollabCard === 'industry' && collaboratorStats?.industry && (
                   <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                    {Object.entries(homeContent.collaboratorStats.industry.subcategories).map(([type, count]) => (
+                    {Object.entries(collaboratorStats.industry.subcategories).map(([type, count]) => (
                       <div key={type} className="flex justify-between">
                         <span>{formatSubcategoryName(type)}:</span>
-                        <span>{count}</span>
+                        <span>{count as number}</span>
                       </div>
                     ))}
                   </div>
@@ -406,7 +459,7 @@ export function Home() {
             <CardHeader className="pb-2">
               <Users className="h-8 w-8 mx-auto text-purple-600 mb-2" />
               <CardTitle className="text-2xl text-purple-700 dark:text-purple-300">
-                {homeContent?.collaboratorStats?.students?.total || 0}
+                {collaboratorStats?.students?.total || 0}
               </CardTitle>
               <CardDescription className="text-xs">Students</CardDescription>
               <motion.div
@@ -418,12 +471,12 @@ export function Home() {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                {hoveredCollabCard === 'students' && homeContent?.collaboratorStats?.students && (
+                {hoveredCollabCard === 'students' && collaboratorStats?.students && (
                   <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                    {Object.entries(homeContent.collaboratorStats.students.subcategories).map(([type, count]) => (
+                    {Object.entries(collaboratorStats.students.subcategories).map(([type, count]) => (
                       <div key={type} className="flex justify-between">
                         <span>{formatSubcategoryName(type)}:</span>
-                        <span>{count}</span>
+                        <span>{count as number}</span>
                       </div>
                     ))}
                   </div>
@@ -440,7 +493,7 @@ export function Home() {
             <CardHeader className="pb-2">
               <Newspaper className="h-8 w-8 mx-auto text-orange-600 mb-2" />
               <CardTitle className="text-2xl text-orange-700 dark:text-orange-300">
-                {homeContent?.collaboratorStats?.others?.total || 0}
+                {collaboratorStats?.others?.total || 0}
               </CardTitle>
               <CardDescription className="text-xs">Others</CardDescription>
               <motion.div
@@ -452,12 +505,12 @@ export function Home() {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                {hoveredCollabCard === 'others' && homeContent?.collaboratorStats?.others && (
+                {hoveredCollabCard === 'others' && collaboratorStats?.others && (
                   <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                    {Object.entries(homeContent.collaboratorStats.others.subcategories).map(([type, count]) => (
+                    {Object.entries(collaboratorStats.others.subcategories).map(([type, count]) => (
                       <div key={type} className="flex justify-between">
                         <span>{formatSubcategoryName(type)}:</span>
-                        <span>{count}</span>
+                        <span>{count as number}</span>
                       </div>
                     ))}
                   </div>
@@ -565,7 +618,6 @@ export function Home() {
             </Link>
           </Button>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {blogPosts.map((post, index) => (
             <motion.div
@@ -574,36 +626,17 @@ export function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.5 + index * 0.1, duration: 0.6 }}
             >
-              <Link to={`/blog/${post._id}`}>
-                <Card className="group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-white/20">
-                  <div className="aspect-video overflow-hidden">
-                    <img
-                      src={post.featuredImage}
-                      alt={post.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                  <CardHeader>
-                    <CardTitle className="text-xl group-hover:text-primary transition-colors">
-                      {post.title}
-                    </CardTitle>
-                    <CardDescription>{post.excerpt}</CardDescription>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>{post.readTime} min read</span>
-                      <span>{new Date(post.publishedAt).toLocaleDateString()}</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {post.tags.slice(0, 3).map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+              <Card className="hover:shadow-xl transition-all duration-300">
+                <CardHeader>
+                  <CardTitle>{post.title}</CardTitle>
+                  <CardDescription>{post.excerpt}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button asChild variant="outline">
+                    <Link to={`/blog/${post.slug}`}>Read More</Link>
+                  </Button>
+                </CardContent>
+              </Card>
             </motion.div>
           ))}
         </div>
@@ -611,3 +644,4 @@ export function Home() {
     </div>
   );
 }
+```

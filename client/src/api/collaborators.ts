@@ -101,3 +101,20 @@ export const deleteCollaborator = async (id: string) => {
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
+
+// Description: Get collaborator statistics
+// Endpoint: GET /api/collaborators/stats/summary
+// Request: {}
+// Response: { stats: Array<{ _id: string, count: number }> }
+export const getCollaboratorStats = async () => {
+  console.log('Collaborators API: Fetching collaborator statistics...');
+  
+  try {
+    const response = await api.get('/api/collaborators/stats/summary');
+    console.log('Collaborators API: Collaborator stats fetched successfully');
+    return response.data;
+  } catch (error) {
+    console.error('Collaborators API: Error fetching collaborator stats:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};

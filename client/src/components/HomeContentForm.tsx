@@ -3,11 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { X, Upload, User, Plus, Trash2 } from 'lucide-react';
-import { getHomeContent, updateHomeContent, uploadProfileImage, getCollaborators, HomeContent, Collaborator } from '@/api/homeContent';
+import { X, Upload, User, Plus } from 'lucide-react';
+import { getHomeContent, updateHomeContent, uploadProfileImage, HomeContent } from '@/api/homeContent';
 import { getSkills } from '@/api/skills';
 import { useToast } from '@/hooks/useToast';
 
@@ -15,19 +14,6 @@ interface HomeContentFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
 }
-
-const collaboratorTypes = [
-  { value: 'postdoc', label: 'Postdoc', category: 'academia' },
-  { value: 'junior_faculty', label: 'Junior Faculty', category: 'academia' },
-  { value: 'senior_faculty', label: 'Senior Faculty', category: 'academia' },
-  { value: 'industry_tech', label: 'Industry - Tech', category: 'industry' },
-  { value: 'industry_finance', label: 'Industry - Finance', category: 'industry' },
-  { value: 'industry_healthcare', label: 'Industry - Healthcare', category: 'industry' },
-  { value: 'undergraduate', label: 'Undergraduate Student', category: 'students' },
-  { value: 'graduate', label: 'Graduate Student', category: 'students' },
-  { value: 'professional_ethicist', label: 'Professional Ethicist', category: 'others' },
-  { value: 'journalist', label: 'Journalist', category: 'others' }
-];
 
 export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
   const { toast } = useToast();
@@ -49,11 +35,6 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
       website: ''
     }
   });
-  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
-  const [newCollaborator, setNewCollaborator] = useState<Collaborator>({
-    name: '',
-    type: 'postdoc'
-  });
 
   useEffect(() => {
     loadData();
@@ -61,9 +42,9 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
 
   const loadData = async () => {
     try {
-      console.log('HomeContentForm: Loading home content, collaborators, and skills...');
+      console.log('HomeContentForm: Loading home content and skills...');
 
-      const [homeContentResponse, collaboratorsResponse, skillsResponse] = await Promise.all([
+      const [homeContentResponse, skillsResponse] = await Promise.all([
         getHomeContent().catch(error => {
           console.log('HomeContentForm: Home content not found, using defaults');
           return {
@@ -84,10 +65,6 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
             }
           };
         }),
-        getCollaborators().catch(error => {
-          console.log('HomeContentForm: Collaborators not found, using empty array');
-          return { collaborators: [] };
-        }),
         getSkills().catch(error => {
           console.log('HomeContentForm: Skills not found, using empty array');
           return { skills: [] };
@@ -95,7 +72,6 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
       ]);
 
       setFormData(homeContentResponse.homeContent);
-      setCollaborators(collaboratorsResponse.collaborators);
       setSkills(skillsResponse.skills || []);
       console.log('HomeContentForm: Data loaded successfully');
     } catch (error) {
@@ -144,20 +120,6 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
     console.log('HomeContentForm: Removed expertise:', expertiseToRemove);
   };
 
-  const addCollaborator = () => {
-    if (newCollaborator.name.trim() && newCollaborator.type) {
-      setCollaborators(prev => [...prev, { ...newCollaborator }]);
-      setNewCollaborator({ name: '', type: 'postdoc' });
-      console.log('HomeContentForm: Added collaborator:', newCollaborator);
-    }
-  };
-
-  const removeCollaborator = (index: number) => {
-    const removedCollaborator = collaborators[index];
-    setCollaborators(prev => prev.filter((_, i) => i !== index));
-    console.log('HomeContentForm: Removed collaborator:', removedCollaborator);
-  };
-
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -203,10 +165,7 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
 
     try {
       console.log('HomeContentForm: Saving home content...');
-      await updateHomeContent({
-        ...formData,
-        collaborators
-      });
+      await updateHomeContent(formData);
       console.log('HomeContentForm: Home content saved successfully');
       toast({
         title: 'Success',
@@ -230,7 +189,7 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
       <CardHeader>
         <CardTitle>Edit Home Page Content</CardTitle>
         <CardDescription>
-          Update your home page information, profile image, social links, and collaborators
+          Update your home page information, profile image, and social links
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -334,7 +293,7 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
           <div className="space-y-2">
             <Label>Core Expertise</Label>
             <p className="text-sm text-gray-600">Select from your existing skills to highlight as core expertise:</p>
-            
+
             {/* Skills Selection */}
             {skills.length > 0 ? (
               <div className="space-y-2">
@@ -371,63 +330,6 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
                     />
                   </Badge>
                 ))}
-              </div>
-            )}
-          </div>
-
-          {/* Collaborators Management */}
-          <div className="space-y-4">
-            <Label>Collaborators</Label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <Input
-                value={newCollaborator.name}
-                onChange={(e) => setNewCollaborator(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Collaborator name"
-              />
-              <Select
-                value={newCollaborator.type}
-                onValueChange={(value) => setNewCollaborator(prev => ({ ...prev, type: value as Collaborator['type'] }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {collaboratorTypes.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button type="button" onClick={addCollaborator} variant="outline">
-                <Plus className="w-4 h-4 mr-2" />
-                Add
-              </Button>
-            </div>
-
-            {collaborators.length > 0 && (
-              <div className="space-y-2">
-                <Label className="text-sm text-gray-600">Current Collaborators ({collaborators.length})</Label>
-                <div className="max-h-40 overflow-y-auto space-y-2">
-                  {collaborators.map((collaborator, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{collaborator.name}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {collaboratorTypes.find(t => t.value === collaborator.type)?.label}
-                        </Badge>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeCollaborator(index)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
           </div>
