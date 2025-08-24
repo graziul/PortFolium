@@ -283,7 +283,7 @@ export function Home() {
           >
             <div className="text-center">
               <img
-                src={homeContent?.profileImageUrl ? `http://localhost:3000${homeContent.profileImageUrl}` : defaultProfileImage}
+                src={homeContent?.profileImageUrl ? 'http://localhost:3000' + homeContent.profileImageUrl : defaultProfileImage}
                 alt="Profile"
                 className="w-40 h-40 rounded-full mx-auto mb-6 border-4 border-white shadow-xl"
               />
@@ -551,11 +551,11 @@ export function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.1 + index * 0.1, duration: 0.6 }}
             >
-              <Link to={`/projects/${project._id}`}>
+              <Link to={'/projects/' + project._id}>
                 <Card className="group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-white/20">
                   <div className="aspect-video overflow-hidden relative">
                     <img
-                      src={project.thumbnailUrl ? `http://localhost:3000${project.thumbnailUrl}` : 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=300&fit=crop'}
+                      src={project.thumbnailUrl ? 'http://localhost:3000' + project.thumbnailUrl : 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=300&fit=crop'}
                       alt={project.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
@@ -618,6 +618,7 @@ export function Home() {
             </Link>
           </Button>
         </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {blogPosts.map((post, index) => (
             <motion.div
@@ -626,15 +627,22 @@ export function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.5 + index * 0.1, duration: 0.6 }}
             >
-              <Card className="hover:shadow-xl transition-all duration-300">
+              <Card className="hover:shadow-lg transition-all duration-300">
                 <CardHeader>
-                  <CardTitle>{post.title}</CardTitle>
-                  <CardDescription>{post.excerpt}</CardDescription>
+                  <CardTitle className="text-xl">{post.title}</CardTitle>
+                  <CardDescription className="line-clamp-2">{post.excerpt}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button asChild variant="outline">
-                    <Link to={`/blog/${post.slug}`}>Read More</Link>
-                  </Button>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">
+                      {new Date(post.publishedAt).toLocaleDateString()}
+                    </span>
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to={'/blog/${post.slug}'}>
+                        Read More <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
