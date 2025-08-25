@@ -10,18 +10,18 @@ const collaboratorSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: true,
+    required: false,
     trim: true,
     lowercase: true
   },
   type: {
     type: String,
     enum: [
-      'postdoc', 
-      'junior_faculty', 
+      'postdoc',
+      'junior_faculty',
       'senior_faculty',
       'industry_tech',
-      'industry_finance', 
+      'industry_finance',
       'industry_healthcare',
       'undergraduate',
       'graduate',

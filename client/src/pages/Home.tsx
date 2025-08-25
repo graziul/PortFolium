@@ -254,11 +254,13 @@ export function Home() {
             className="space-y-6"
           >
             <div className="text-center">
-              <img
-                src={homeContent?.profileImageUrl ? 'http://localhost:3000' + homeContent.profileImageUrl : defaultProfileImage}
-                alt="Profile"
-                className="w-40 h-40 rounded-full mx-auto mb-6 border-4 border-white shadow-xl"
-              />
+              <div className="w-40 h-40 mx-auto mb-6 rounded-full overflow-hidden border-4 border-white shadow-xl">
+                <img
+                  src={homeContent?.profileImageUrl ? 'http://localhost:3000' + homeContent.profileImageUrl : defaultProfileImage}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              </div>
             </div>
 
             <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm rounded-xl p-6 border border-white/40">

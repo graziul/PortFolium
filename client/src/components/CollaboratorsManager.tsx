@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Edit, Trash2, Users, Mail, Building, User, ExternalLink } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, Building, User, ExternalLink } from 'lucide-react';
 import { getCollaborators, deleteCollaborator, Collaborator } from '@/api/collaborators';
 import { CollaboratorForm } from './CollaboratorForm';
 import { useToast } from '@/hooks/useToast';
@@ -171,10 +171,11 @@ export function CollaboratorsManager() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h4 className="font-semibold text-lg">{collaborator.name}</h4>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                        <Mail className="h-3 w-3" />
-                        {collaborator.email}
-                      </div>
+                      <Badge
+                        className={`${collaboratorTypeColors[collaborator.type]} text-xs mt-2`}
+                      >
+                        {collaboratorTypeLabels[collaborator.type]}
+                      </Badge>
                     </div>
                     <div className="flex gap-1">
                       <Button
@@ -217,12 +218,6 @@ export function CollaboratorsManager() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <Badge 
-                    className={`${collaboratorTypeColors[collaborator.type]} text-xs`}
-                  >
-                    {collaboratorTypeLabels[collaborator.type]}
-                  </Badge>
-
                   {collaborator.institution && (
                     <div className="flex items-center gap-2 text-sm">
                       <Building className="h-3 w-3 text-muted-foreground" />
