@@ -8,23 +8,25 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { 
-  PlusIcon, 
-  PencilIcon, 
-  TrashIcon, 
-  BriefcaseIcon, 
-  GraduationCapIcon, 
-  CodeIcon, 
+import {
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  BriefcaseIcon,
+  GraduationCapIcon,
+  CodeIcon,
   TrophyIcon,
-  CalendarIcon
+  CalendarIcon,
+  BookOpenIcon,
+  StarIcon
 } from 'lucide-react';
-import { 
-  getTimelineEvents, 
-  createTimelineEvent, 
-  updateTimelineEvent, 
+import {
+  getTimelineEvents,
+  createTimelineEvent,
+  updateTimelineEvent,
   deleteTimelineEvent,
   type TimelineEvent,
-  type CreateTimelineEventData 
+  type CreateTimelineEventData
 } from '@/api/timeline';
 import { useToast } from '@/hooks/useToast';
 
@@ -57,12 +59,13 @@ export const CareerTimeline: React.FC<CareerTimelineProps> = ({ className = '' }
       setIsLoading(true);
       const response = await getTimelineEvents();
       // Sort events by date (newest first)
-      const sortedEvents = response.events.sort((a, b) => 
+      const sortedEvents = response.events.sort((a, b) =>
         new Date(b.date).getTime() - new Date(a.date).getTime()
       );
       setEvents(sortedEvents);
+      console.log('CareerTimeline: Events loaded and sorted by date');
     } catch (error) {
-      console.error('Error fetching timeline events:', error);
+      console.error('CareerTimeline: Error fetching timeline events:', error);
       toast({
         title: "Error",
         description: "Failed to load timeline events",
@@ -76,16 +79,18 @@ export const CareerTimeline: React.FC<CareerTimelineProps> = ({ className = '' }
   const handleAddEvent = async () => {
     try {
       const newEvent = await createTimelineEvent(eventForm);
-      setEvents(prev => [newEvent, ...prev].sort((a, b) => 
+      setEvents(prev => [newEvent, ...prev].sort((a, b) =>
         new Date(b.date).getTime() - new Date(a.date).getTime()
       ));
       resetForm();
       setShowEventDialog(false);
+      console.log('CareerTimeline: New event added successfully');
       toast({
         title: "Success",
         description: "Timeline event added successfully",
       });
     } catch (error) {
+      console.error('CareerTimeline: Error adding timeline event:', error);
       toast({
         title: "Error",
         description: "Failed to add timeline event",
@@ -96,20 +101,22 @@ export const CareerTimeline: React.FC<CareerTimelineProps> = ({ className = '' }
 
   const handleUpdateEvent = async () => {
     if (!editingEvent) return;
-    
+
     try {
       const updatedEvent = await updateTimelineEvent(editingEvent._id, eventForm);
-      setEvents(prev => prev.map(event => 
+      setEvents(prev => prev.map(event =>
         event._id === editingEvent._id ? updatedEvent : event
       ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       resetForm();
       setShowEventDialog(false);
       setEditingEvent(null);
+      console.log('CareerTimeline: Event updated successfully');
       toast({
         title: "Success",
         description: "Timeline event updated successfully",
       });
     } catch (error) {
+      console.error('CareerTimeline: Error updating timeline event:', error);
       toast({
         title: "Error",
         description: "Failed to update timeline event",
@@ -122,11 +129,13 @@ export const CareerTimeline: React.FC<CareerTimelineProps> = ({ className = '' }
     try {
       await deleteTimelineEvent(eventId);
       setEvents(prev => prev.filter(event => event._id !== eventId));
+      console.log('CareerTimeline: Event deleted successfully');
       toast({
         title: "Success",
         description: "Timeline event deleted successfully",
       });
     } catch (error) {
+      console.error('CareerTimeline: Error deleting timeline event:', error);
       toast({
         title: "Error",
         description: "Failed to delete timeline event",
@@ -173,6 +182,8 @@ export const CareerTimeline: React.FC<CareerTimelineProps> = ({ className = '' }
         return <GraduationCapIcon className="w-4 h-4" />;
       case 'project':
         return <CodeIcon className="w-4 h-4" />;
+      case 'publication':
+        return <BookOpenIcon className="w-4 h-4" />;
       case 'milestone':
         return <TrophyIcon className="w-4 h-4" />;
       default:
@@ -188,12 +199,24 @@ export const CareerTimeline: React.FC<CareerTimelineProps> = ({ className = '' }
         return 'bg-green-500';
       case 'project':
         return 'bg-purple-500';
+      case 'publication':
+        return 'bg-orange-500';
       case 'milestone':
         return 'bg-yellow-500';
       default:
         return 'bg-gray-500';
     }
   };
+
+  // Determine if an event is major (education, experience, publication) or minor
+  const isMajorEvent = (event: TimelineEvent) => {
+    const majorTypes = ['education', 'experience', 'publication'];
+    return majorTypes.includes(event.type);
+  };
+
+  // Separate events into major and minor
+  const majorEvents = events.filter(isMajorEvent);
+  const minorEvents = events.filter(event => !isMajorEvent(event));
 
   if (isLoading) {
     return (
@@ -224,81 +247,187 @@ export const CareerTimeline: React.FC<CareerTimelineProps> = ({ className = '' }
           </div>
         </CardHeader>
         <CardContent>
-          {events.length > 0 ? (
-            <div className="relative">
-              {/* Timeline line */}
-              <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>
-              
+          {(majorEvents.length > 0 || minorEvents.length > 0) ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Major Events Column (Left) */}
               <div className="space-y-6">
-                {events.map((event, index) => (
-                  <motion.div
-                    key={event._id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="relative flex items-start gap-4"
-                  >
-                    {/* Timeline dot */}
-                    <div className={`relative z-10 flex items-center justify-center w-12 h-12 rounded-full ${getEventColor(event.type)} text-white shadow-lg`}>
-                      {getEventIcon(event.type)}
-                    </div>
-                    
-                    {/* Event content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="bg-white border rounded-lg p-4 shadow-sm">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex-1">
-                            <h4 className="text-lg font-semibold text-gray-900">{event.title}</h4>
-                            <p className="text-sm text-gray-500 mb-2">
-                              {new Date(event.date).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
-                            </p>
+                <div className="flex items-center gap-2 mb-4">
+                  <StarIcon className="w-5 h-5 text-yellow-500" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Major Milestones</h3>
+                </div>
+
+                {majorEvents.length > 0 ? (
+                  <div className="relative">
+                    {/* Timeline line for major events */}
+                    <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-yellow-200 dark:bg-yellow-800"></div>
+
+                    <div className="space-y-6">
+                      {majorEvents.map((event, index) => (
+                        <motion.div
+                          key={event._id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: index * 0.1 }}
+                          className="relative flex items-start gap-4"
+                        >
+                          {/* Timeline dot */}
+                          <div className={`relative z-10 flex items-center justify-center w-12 h-12 rounded-full ${getEventColor(event.type)} text-white shadow-lg`}>
+                            {getEventIcon(event.type)}
                           </div>
-                          <div className="flex gap-1 ml-2">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => openEditDialog(event)}
-                            >
-                              <PencilIcon className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => handleDeleteEvent(event._id)}
-                            >
-                              <TrashIcon className="w-4 h-4" />
-                            </Button>
+
+                          {/* Event content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="bg-white dark:bg-gray-800 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 shadow-sm">
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex-1">
+                                  <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{event.title}</h4>
+                                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                                    {new Date(event.date).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
+                                    })}
+                                  </p>
+                                </div>
+                                <div className="flex gap-1 ml-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => openEditDialog(event)}
+                                  >
+                                    <PencilIcon className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteEvent(event._id)}
+                                  >
+                                    <TrashIcon className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+
+                              <p className="text-gray-700 dark:text-gray-300 mb-3">{event.description}</p>
+
+                              <div className="flex flex-wrap gap-2">
+                                <Badge variant="secondary" className="capitalize">
+                                  {event.type}
+                                </Badge>
+                                <Badge variant="outline">
+                                  {event.category}
+                                </Badge>
+                                {event.metadata?.technologies?.map((tech, i) => (
+                                  <Badge key={i} variant="outline" className="text-xs">
+                                    {tech}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        
-                        <p className="text-gray-700 mb-3">{event.description}</p>
-                        
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="secondary" className="capitalize">
-                            {event.type}
-                          </Badge>
-                          <Badge variant="outline">
-                            {event.category}
-                          </Badge>
-                          {event.metadata?.technologies?.map((tech, i) => (
-                            <Badge key={i} variant="outline" className="text-xs">
-                              {tech}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
+                        </motion.div>
+                      ))}
                     </div>
-                  </motion.div>
-                ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <GraduationCapIcon className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                    <p>No major milestones yet.</p>
+                    <p className="text-sm">Add education, job changes, or publications!</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Minor Events Column (Right) */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <CalendarIcon className="w-5 h-5 text-blue-500" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Other Events</h3>
+                </div>
+
+                {minorEvents.length > 0 ? (
+                  <div className="relative">
+                    {/* Timeline line for minor events */}
+                    <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-blue-200 dark:bg-blue-800"></div>
+
+                    <div className="space-y-6">
+                      {minorEvents.map((event, index) => (
+                        <motion.div
+                          key={event._id}
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: index * 0.1 }}
+                          className="relative flex items-start gap-4"
+                        >
+                          {/* Timeline dot */}
+                          <div className={`relative z-10 flex items-center justify-center w-10 h-10 rounded-full ${getEventColor(event.type)} text-white shadow-md`}>
+                            {getEventIcon(event.type)}
+                          </div>
+
+                          {/* Event content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 rounded-lg p-3 shadow-sm">
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex-1">
+                                  <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">{event.title}</h4>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                    {new Date(event.date).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric'
+                                    })}
+                                  </p>
+                                </div>
+                                <div className="flex gap-1 ml-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => openEditDialog(event)}
+                                  >
+                                    <PencilIcon className="w-3 h-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteEvent(event._id)}
+                                  >
+                                    <TrashIcon className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </div>
+
+                              <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{event.description}</p>
+
+                              <div className="flex flex-wrap gap-1">
+                                <Badge variant="secondary" className="text-xs capitalize">
+                                  {event.type}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  {event.category}
+                                </Badge>
+                                {event.metadata?.technologies?.slice(0, 2).map((tech, i) => (
+                                  <Badge key={i} variant="outline" className="text-xs">
+                                    {tech}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <CodeIcon className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                    <p>No other events yet.</p>
+                    <p className="text-sm">Add projects, milestones, or achievements!</p>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              <CalendarIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              <CalendarIcon className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
               <p>No timeline events yet.</p>
               <p className="text-sm">Add your first career milestone!</p>
             </div>
@@ -346,18 +475,19 @@ export const CareerTimeline: React.FC<CareerTimelineProps> = ({ className = '' }
               </div>
               <div>
                 <Label htmlFor="event-type">Type</Label>
-                <Select 
-                  value={eventForm.type} 
+                <Select
+                  value={eventForm.type}
                   onValueChange={(value: any) => setEventForm({ ...eventForm, type: value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="milestone">Milestone</SelectItem>
-                    <SelectItem value="project">Project</SelectItem>
-                    <SelectItem value="experience">Experience</SelectItem>
                     <SelectItem value="education">Education</SelectItem>
+                    <SelectItem value="experience">Experience</SelectItem>
+                    <SelectItem value="publication">Publication</SelectItem>
+                    <SelectItem value="project">Project</SelectItem>
+                    <SelectItem value="milestone">Milestone</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

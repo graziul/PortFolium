@@ -1,67 +1,32 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Menu, X, LogOut, User, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogOut, Menu, X, Activity } from 'lucide-react';
 import { getHomeContent } from '@/api/homeContent';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export function Header() {
   console.log('Header: Component rendering...');
   
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+  console.log('Header: User state:', user ? 'logged in' : 'not logged in');
+  
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [headerText, setHeaderText] = useState('Stellar Codex');
-
-  console.log('Header: User state:', user ? 'logged in' : 'not logged in');
+  const location = useLocation();
+  
   console.log('Header: Current location:', location.pathname);
+  console.log('Header: User object details:', user);
 
-  useEffect(() => {
-    console.log('Header: useEffect triggered, user:', user);
-    
-    const fetchHeaderText = async () => {
-      try {
-        console.log('Header: Fetching header text from home content...');
-        const response = await getHomeContent();
-        console.log('Header: Home content response:', response);
-        
-        if (response.homeContent?.headerText) {
-          console.log('Header: Setting header text to:', response.homeContent.headerText);
-          setHeaderText(response.homeContent.headerText);
-        } else {
-          console.log('Header: No headerText found, using default');
-        }
-      } catch (error) {
-        console.error('Header: Error fetching header text:', error);
-        console.log('Header: Using default header text due to error');
-      }
-    };
-
-    if (user) {
-      fetchHeaderText();
-    }
-  }, [user, location.pathname]);
-
-  const handleLogout = async () => {
-    console.log('Header: Logout initiated');
-    try {
-      await logout();
-      navigate('/login');
-      console.log('Header: Logout successful');
-    } catch (error) {
-      console.error('Header: Logout error:', error);
-    }
-  };
-
-  const isActive = (path: string) => {
-    const active = location.pathname === path || location.pathname.startsWith(path + '/');
-    console.log('Header: Checking if path', path, 'is active:', active);
-    return active;
-  };
-
-  const navItems = [
+  const navigationItems = [
     { path: '/', label: 'Home' },
     { path: '/projects', label: 'Projects' },
     { path: '/project-tracker', label: 'Live Tracker', special: true },
@@ -71,65 +36,102 @@ export function Header() {
     { path: '/contact', label: 'Contact' },
   ];
 
-  console.log('Header: Navigation items:', navItems);
+  console.log('Header: Navigation items:', navigationItems);
   console.log('Header: Current header text:', headerText);
 
-  if (!user) {
-    console.log('Header: No user, not rendering header');
-    return null;
-  }
+  useEffect(() => {
+    console.log('Header: useEffect triggered, user:', user);
+    if (user) {
+      console.log('Header: Fetching header text from home content...');
+      const fetchHeaderText = async () => {
+        try {
+          const response = await getHomeContent();
+          console.log('Header: Home content response:', response);
+          if (response?.homeContent?.headerText) {
+            console.log('Header: Setting header text to:', response.homeContent.headerText);
+            setHeaderText(response.homeContent.headerText);
+          }
+        } catch (error) {
+          console.error('Header: Error fetching home content:', error);
+        }
+      };
+      fetchHeaderText();
+    }
+  }, [user]);
+
+  const handleLogout = () => {
+    logout();
+    setIsMenuOpen(false);
+  };
+
+  const isActivePath = (path: string) => {
+    const isActive = location.pathname === path;
+    console.log(`Header: Checking if path ${path} is active:`, isActive);
+    return isActive;
+  };
 
   console.log('Header: Rendering header with text:', headerText);
+  console.log('Header: About to render user dropdown with User icon (no initials)');
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between">
-        {/* Logo/Brand */}
-        <Link to="/" className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">SC</span>
-          </div>
-          <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            {headerText}
-          </span>
-        </Link>
+      <div className="container flex h-14 items-center">
+        {/* Logo/Brand with colorful gradient styling */}
+        <div className="mr-4 flex">
+          <Link to="/" className="mr-6 flex items-center space-x-2">
+            <span className="font-bold text-xl bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 transition-all duration-300">
+              {headerText}
+            </span>
+          </Link>
+        </div>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-6">
-          {navItems.map((item) => (
+        <nav className="hidden md:flex items-center space-x-6 text-sm font-medium flex-1">
+          {navigationItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
-              className={`text-sm font-medium transition-all duration-200 hover:text-primary ${
-                isActive(item.path)
-                  ? 'text-primary'
-                  : 'text-muted-foreground'
+              className={`transition-colors hover:text-foreground/80 ${
+                isActivePath(item.path)
+                  ? 'text-foreground'
+                  : 'text-foreground/60'
               } ${
-                item.special 
-                  ? 'px-3 py-1.5 rounded-full bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 hover:from-green-200 hover:to-emerald-200 dark:hover:from-green-900/40 dark:hover:to-emerald-900/40 text-green-700 dark:text-green-300 hover:text-green-800 dark:hover:text-green-200'
+                item.special
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white px-3 py-1 rounded-md hover:from-blue-600 hover:to-purple-700 shadow-md hover:shadow-lg transition-all duration-300'
                   : ''
               }`}
             >
-              {item.special && <Activity className="h-3 w-3 mr-1.5 inline" />}
               {item.label}
             </Link>
           ))}
         </nav>
 
-        {/* Right side actions */}
-        <div className="flex items-center space-x-4">
+        {/* Right side items */}
+        <div className="flex items-center space-x-2">
           <ThemeToggle />
-
-          {/* Desktop logout */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLogout}
-            className="hidden md:flex hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
+          
+          {user && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-950/20 dark:hover:to-purple-950/20 transition-all duration-300">
+                  <User className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuItem asChild>
+                  <Link to="/about" className="flex items-center">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           {/* Mobile menu button */}
           <Button
@@ -145,36 +147,47 @@ export function Header() {
 
       {/* Mobile Navigation */}
       {isMenuOpen && (
-        <div className="md:hidden border-t bg-background/95 backdrop-blur">
-          <nav className="container py-4 space-y-2">
-            {navItems.map((item) => (
+        <div className="md:hidden">
+          <nav className="flex flex-col space-y-3 px-4 py-3 border-t bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20">
+            {navigationItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`block px-3 py-2 text-sm font-medium transition-colors hover:text-primary rounded-md ${
-                  isActive(item.path)
-                    ? 'text-primary bg-primary/10'
-                    : 'text-muted-foreground hover:bg-muted'
+                className={`transition-colors hover:text-foreground/80 ${
+                  isActivePath(item.path)
+                    ? 'text-foreground font-medium'
+                    : 'text-foreground/60'
                 } ${
-                  item.special 
-                    ? 'bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
-                    : ''
+                  item.special
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white px-3 py-2 rounded-md hover:from-blue-600 hover:to-purple-700 shadow-md'
+                    : 'py-2'
                 }`}
                 onClick={() => setIsMenuOpen(false)}
               >
-                {item.special && <Activity className="h-3 w-3 mr-1.5 inline" />}
                 {item.label}
               </Link>
             ))}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="w-full justify-start mt-4 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+            {user && (
+              <>
+                <div className="border-t pt-3">
+                  <Link
+                    to="/about"
+                    className="flex items-center py-2 text-foreground/60 hover:text-foreground/80"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center py-2 text-foreground/60 hover:text-foreground/80 w-full text-left"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </button>
+                </div>
+              </>
+            )}
           </nav>
         </div>
       )}

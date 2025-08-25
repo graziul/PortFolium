@@ -1,15 +1,93 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { MapPin, Calendar, Award, ExternalLink, Mail, Settings } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { getUserProfile, UserProfile } from '@/api/profile';
-import { getHomeContent, HomeContent } from '@/api/homeContent';
-import { ProfileForm } from '@/components/ProfileForm';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { MapPin, Calendar, Award, ExternalLink, Mail, Settings, Phone, Globe, User } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { getUserProfile, UserProfile, updateUserProfile } from '@/api/profile';
+import { getHomeContent, HomeContent, updateHomeContent } from '@/api/homeContent';
+import { CareerTimeline } from '@/components/CareerTimeline';
 import { useToast } from '@/hooks/useToast';
+
+interface ProfileFormProps {
+  onSuccess: () => void;
+  onCancel: () => void;
+  profile: UserProfile | null;
+  homeContent: HomeContent | null;
+}
+
+const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess, onCancel, profile, homeContent }) => {
+  const [formData, setFormData] = useState({
+    bio: homeContent?.bio || profile?.bio || ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      if (homeContent) {
+        await updateHomeContent({
+          ...homeContent,
+          bio: formData.bio
+        });
+      } else {
+        await updateUserProfile({
+          bio: formData.bio
+        });
+      }
+
+      toast({
+        title: "Success",
+        description: "About page content updated successfully.",
+      });
+
+      onSuccess();
+    } catch (error) {
+      console.error('ProfileForm: Error updating content:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update content. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div>
+        <Label htmlFor="bio">What I'm About Content</Label>
+        <Textarea
+          id="bio"
+          value={formData.bio}
+          onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+          placeholder="Tell your story here... Use line breaks to separate paragraphs."
+          rows={8}
+          className="min-h-[200px]"
+        />
+        <p className="text-sm text-muted-foreground mt-2">
+          Use line breaks (Enter key) to separate paragraphs. Each line break will create a new paragraph.
+        </p>
+      </div>
+
+      <div className="flex gap-2 pt-4">
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Saving...' : 'Save Changes'}
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+};
 
 export function AboutContent() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -21,33 +99,31 @@ export function AboutContent() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('About: Fetching user profile and home content...');
-        
+        console.log('AboutContent: Fetching user profile and home content...');
+
         const [profileResponse, homeContentResponse] = await Promise.all([
           getUserProfile().catch(error => {
-            console.log('About: Profile not found, using defaults');
+            console.log('AboutContent: Profile not found, using defaults');
             return {
-              user: {
-                name: 'Your Name',
-                email: '',
-                bio: '',
-                location: '',
-                socialLinks: {
-                  linkedin: '',
-                  github: '',
-                  twitter: '',
-                  website: ''
-                },
-                experiences: [],
-                education: [],
-                certifications: [],
-                languages: [],
-                accomplishments: []
-              }
+              name: 'Your Name',
+              email: '',
+              bio: '',
+              location: '',
+              socialLinks: {
+                linkedin: '',
+                github: '',
+                twitter: '',
+                website: ''
+              },
+              experiences: [],
+              education: [],
+              certifications: [],
+              languages: [],
+              accomplishments: []
             };
           }),
           getHomeContent().catch(error => {
-            console.log('About: Home content not found, using defaults');
+            console.log('AboutContent: Home content not found, using defaults');
             return {
               homeContent: {
                 name: 'Your Name',
@@ -67,11 +143,11 @@ export function AboutContent() {
           })
         ]);
 
-        setProfile(profileResponse.user);
+        setProfile(profileResponse);
         setHomeContent(homeContentResponse.homeContent);
-        console.log('About: Data loaded successfully');
+        console.log('AboutContent: Data loaded successfully');
       } catch (error) {
-        console.error('About: Error loading data:', error);
+        console.error('AboutContent: Error loading data:', error);
         toast({
           title: 'Error',
           description: 'Failed to load profile data.',
@@ -87,17 +163,37 @@ export function AboutContent() {
 
   const handleEditSuccess = async () => {
     setShowEditDialog(false);
-    // Refresh profile data
+
     try {
-      const profileResponse = await getUserProfile();
-      setProfile(profileResponse.user);
+      const [profileResponse, homeContentResponse] = await Promise.all([
+        getUserProfile(),
+        getHomeContent()
+      ]);
+      setProfile(profileResponse);
+      setHomeContent(homeContentResponse.homeContent);
       toast({
         title: "Success",
-        description: "Profile updated successfully.",
+        description: "Content refreshed successfully.",
       });
     } catch (error) {
-      console.error('About: Error refreshing profile:', error);
+      console.error('AboutContent: Error refreshing data:', error);
     }
+  };
+
+  const formatBioText = (text: string) => {
+    if (!text) return 'No bio available. Please update your profile.';
+
+    console.log('AboutContent: Formatting bio text:', text);
+
+    const paragraphs = text.split('\n').filter(paragraph => paragraph.trim() !== '');
+
+    console.log('AboutContent: Split into paragraphs:', paragraphs);
+
+    return paragraphs.map((paragraph, index) => (
+      <p key={index} className="mb-4 last:mb-0 leading-relaxed text-gray-700 dark:text-gray-300">
+        {paragraph.trim()}
+      </p>
+    ));
   };
 
   if (loading) {
@@ -108,12 +204,11 @@ export function AboutContent() {
     );
   }
 
-  // Use bio from home content as primary source, fall back to profile bio
   const displayBio = homeContent?.bio || profile?.bio || 'No bio available. Please update your profile.';
+  console.log('AboutContent: Display bio:', displayBio);
 
   return (
-    <div className="space-y-8">
-      {/* Header with Edit Button */}
+    <div className="max-w-4xl mx-auto space-y-8">
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-4xl font-bold mb-2">About Me</h1>
@@ -130,264 +225,134 @@ export function AboutContent() {
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Edit Profile</DialogTitle>
+              <DialogTitle>Edit About Page Content</DialogTitle>
             </DialogHeader>
-            <ProfileForm onSuccess={handleEditSuccess} onCancel={() => setShowEditDialog(false)} />
+            <ProfileForm
+              onSuccess={handleEditSuccess}
+              onCancel={() => setShowEditDialog(false)}
+              profile={profile}
+              homeContent={homeContent}
+            />
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-8">
-          {/* Description Section - Using Home Content Bio */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>Description</CardTitle>
-                <CardDescription>Personal accomplishments, hobbies, and achievements</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="prose prose-gray dark:prose-invert max-w-none">
-                  <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                    {displayBio.split('\n').map((paragraph, index) => (
-                      <p key={index} className="mb-4 last:mb-0">
-                        {paragraph}
-                      </p>
-                    ))}
+      <div className="space-y-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
+            <CardHeader>
+              <CardTitle className="text-2xl font-bold text-blue-900 dark:text-blue-100">What I'm About</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="prose prose-gray dark:prose-invert max-w-none">
+                <div className="text-lg leading-relaxed">
+                  {formatBioText(displayBio)}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.05 }}
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Personal Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg mb-3">Contact Details</h3>
+                  {profile?.email && (
+                    <div className="flex items-center gap-3">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{profile.email}</span>
+                    </div>
+                  )}
+                  {profile?.phone && (
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{profile.phone}</span>
+                    </div>
+                  )}
+                  {profile?.location && (
+                    <div className="flex items-center gap-3">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{profile.location}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg mb-3">Connect With Me</h3>
+                  <div className="space-y-3">
+                    {profile?.socialLinks?.linkedin && (
+                      <a
+                        href={profile.socialLinks.linkedin}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        LinkedIn
+                      </a>
+                    )}
+                    {profile?.socialLinks?.github && (
+                      <a
+                        href={profile.socialLinks.github}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        GitHub
+                      </a>
+                    )}
+                    {profile?.socialLinks?.twitter && (
+                      <a
+                        href={profile.socialLinks.twitter}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 text-sm text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        Twitter
+                      </a>
+                    )}
+                    {profile?.socialLinks?.website && (
+                      <a
+                        href={profile.socialLinks.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 text-sm text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
+                      >
+                        <Globe className="h-4 w-4" />
+                        Website
+                      </a>
+                    )}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-          {/* Experience Section */}
-          {profile?.experiences && profile.experiences.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Award className="h-5 w-5" />
-                    Professional Experience
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {profile.experiences.map((experience, index) => (
-                      <div key={index} className="border-l-2 border-primary/20 pl-6 relative">
-                        <div className="absolute -left-2 top-0 w-4 h-4 bg-primary rounded-full"></div>
-                        <div className="space-y-2">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                            <h3 className="font-semibold text-lg">{experience.position}</h3>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Calendar className="h-4 w-4" />
-                              {experience.startDate} - {experience.endDate || 'Present'}
-                            </div>
-                          </div>
-                          <p className="font-medium text-primary">{experience.company}</p>
-                          {experience.location && (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <MapPin className="h-4 w-4" />
-                              {experience.location}
-                            </div>
-                          )}
-                          {experience.description && (
-                            <p className="text-muted-foreground mt-2">{experience.description}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Education Section */}
-          {profile?.education && profile.education.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Award className="h-5 w-5" />
-                    Education
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {profile.education.map((education, index) => (
-                      <div key={index} className="border-l-2 border-primary/20 pl-6 relative">
-                        <div className="absolute -left-2 top-0 w-4 h-4 bg-primary rounded-full"></div>
-                        <div className="space-y-2">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                            <h3 className="font-semibold text-lg">{education.degree}</h3>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Calendar className="h-4 w-4" />
-                              {education.startDate} - {education.endDate || 'Present'}
-                            </div>
-                          </div>
-                          <p className="font-medium text-primary">{education.institution}</p>
-                          {education.location && (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <MapPin className="h-4 w-4" />
-                              {education.location}
-                            </div>
-                          )}
-                          {education.description && (
-                            <p className="text-muted-foreground mt-2">{education.description}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Accomplishments Section */}
-          {profile?.accomplishments && profile.accomplishments.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Award className="h-5 w-5" />
-                    Accomplishments
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {profile.accomplishments.map((accomplishment, index) => (
-                      <div key={index} className="p-4 bg-muted/50 rounded-lg">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-                          <h3 className="font-semibold">{accomplishment.title}</h3>
-                          {accomplishment.date && (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Calendar className="h-4 w-4" />
-                              {accomplishment.date}
-                            </div>
-                          )}
-                        </div>
-                        {accomplishment.organization && (
-                          <p className="text-primary font-medium mb-2">{accomplishment.organization}</p>
-                        )}
-                        {accomplishment.description && (
-                          <p className="text-muted-foreground">{accomplishment.description}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Contact Information - NO PHONE */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>Contact Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {profile?.email && (
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <a href={`mailto:${profile.email}`} className="text-sm hover:text-primary transition-colors">
-                      {profile.email}
-                    </a>
-                  </div>
-                )}
-
-                {profile?.location && (
-                  <div className="flex items-center gap-3">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{profile.location}</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Certifications */}
-          {profile?.certifications && profile.certifications.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle>Certifications</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {profile.certifications.map((certification, index) => (
-                      <div key={index} className="p-3 bg-muted/50 rounded-lg">
-                        <h4 className="font-medium text-sm">{certification.name}</h4>
-                        {certification.issuer && (
-                          <p className="text-xs text-muted-foreground mt-1">{certification.issuer}</p>
-                        )}
-                        {certification.date && (
-                          <p className="text-xs text-muted-foreground mt-1">{certification.date}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Languages */}
-          {profile?.languages && profile.languages.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle>Languages</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {profile.languages.map((language, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{language.name}</span>
-                        <Badge variant="secondary" className="text-xs">
-                          {language.proficiency}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
+          <CareerTimeline />
+        </motion.div>
       </div>
     </div>
   );
