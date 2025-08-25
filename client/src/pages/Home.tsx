@@ -1,4 +1,3 @@
-```
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Code, Users, BookOpen, Activity, Settings, UserPlus, GraduationCap, Building, Newspaper } from 'lucide-react';
@@ -623,4 +622,3 @@ export function Home() {
     </div>
   );
 }
-```
