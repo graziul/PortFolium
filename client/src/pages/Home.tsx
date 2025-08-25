@@ -43,18 +43,10 @@ export function Home() {
         setBlogPosts((blogResponse as any).posts.slice(0, 2));
         setFeaturedSkills((featuredSkillsResponse as any).skills);
 
-        let hasCollaboratorStats = false;
-
         try {
           const homeContentResponse = await getHomeContent();
           setHomeContent(homeContentResponse.homeContent);
-
-          // Use collaborator stats from home content (this is where the data exists)
-          if (homeContentResponse.homeContent.collaboratorStats) {
-            console.log('Home: Using collaborator stats from home content:', homeContentResponse.homeContent.collaboratorStats);
-            setCollaboratorStats(homeContentResponse.homeContent.collaboratorStats);
-            hasCollaboratorStats = true;
-          }
+          console.log('Home: Home content loaded successfully');
         } catch (homeError) {
           console.log('Home: Home content not found, using defaults');
           setHomeContent({
@@ -68,53 +60,52 @@ export function Home() {
               linkedin: '',
               github: '',
               twitter: '',
-              website: ''
+              bluesky: ''
             }
           });
         }
 
-        // Only try API if we don't have stats from home content
-        if (!hasCollaboratorStats) {
-          try {
-            const statsResponse = await getCollaboratorStats();
-            console.log('Home: Collaborator stats from API:', statsResponse.stats);
+        // Always get real collaborator stats from the Collaborator collection
+        try {
+          const statsResponse = await getCollaboratorStats();
+          console.log('Home: Collaborator stats from API:', statsResponse.stats);
 
-            const transformedStats = {
-              academia: { total: 0, subcategories: { postdoc: 0, junior_faculty: 0, senior_faculty: 0 } },
-              industry: { total: 0, subcategories: { industry_tech: 0, industry_finance: 0, industry_healthcare: 0 } },
-              students: { total: 0, subcategories: { undergraduate: 0, graduate: 0 } },
-              others: { total: 0, subcategories: { professional_ethicist: 0, journalist: 0 } }
-            };
+          const transformedStats = {
+            academia: { total: 0, subcategories: { postdoc: 0, junior_faculty: 0, senior_faculty: 0 } },
+            industry: { total: 0, subcategories: { industry_tech: 0, industry_finance: 0, industry_healthcare: 0 } },
+            students: { total: 0, subcategories: { undergraduate: 0, graduate: 0 } },
+            others: { total: 0, subcategories: { professional_ethicist: 0, journalist: 0 } }
+          };
 
-            statsResponse.stats.forEach((stat: any) => {
-              const type = stat._id;
-              const count = stat.count;
+          statsResponse.stats.forEach((stat: any) => {
+            const type = stat._id;
+            const count = stat.count;
 
-              if (['postdoc', 'junior_faculty', 'senior_faculty'].includes(type)) {
-                transformedStats.academia.total += count;
-                transformedStats.academia.subcategories[type] = count;
-              } else if (['industry_tech', 'industry_finance', 'industry_healthcare'].includes(type)) {
-                transformedStats.industry.total += count;
-                transformedStats.industry.subcategories[type] = count;
-              } else if (['undergraduate', 'graduate'].includes(type)) {
-                transformedStats.students.total += count;
-                transformedStats.students.subcategories[type] = count;
-              } else if (['professional_ethicist', 'journalist'].includes(type)) {
-                transformedStats.others.total += count;
-                transformedStats.others.subcategories[type] = count;
-              }
-            });
+            if (['postdoc', 'junior_faculty', 'senior_faculty'].includes(type)) {
+              transformedStats.academia.total += count;
+              transformedStats.academia.subcategories[type] = count;
+            } else if (['industry_tech', 'industry_finance', 'industry_healthcare'].includes(type)) {
+              transformedStats.industry.total += count;
+              transformedStats.industry.subcategories[type] = count;
+            } else if (['undergraduate', 'graduate'].includes(type)) {
+              transformedStats.students.total += count;
+              transformedStats.students.subcategories[type] = count;
+            } else if (['professional_ethicist', 'journalist'].includes(type)) {
+              transformedStats.others.total += count;
+              transformedStats.others.subcategories[type] = count;
+            }
+          });
 
-            setCollaboratorStats(transformedStats);
-          } catch (statsError) {
-            console.log('Home: Collaborator stats not available, using defaults');
-            setCollaboratorStats({
-              academia: { total: 0, subcategories: { postdoc: 0, junior_faculty: 0, senior_faculty: 0 } },
-              industry: { total: 0, subcategories: { industry_tech: 0, industry_finance: 0, industry_healthcare: 0 } },
-              students: { total: 0, subcategories: { undergraduate: 0, graduate: 0 } },
-              others: { total: 0, subcategories: { professional_ethicist: 0, journalist: 0 } }
-            });
-          }
+          setCollaboratorStats(transformedStats);
+          console.log('Home: Transformed collaborator stats:', transformedStats);
+        } catch (statsError) {
+          console.log('Home: Collaborator stats not available, using defaults');
+          setCollaboratorStats({
+            academia: { total: 0, subcategories: { postdoc: 0, junior_faculty: 0, senior_faculty: 0 } },
+            industry: { total: 0, subcategories: { industry_tech: 0, industry_finance: 0, industry_healthcare: 0 } },
+            students: { total: 0, subcategories: { undergraduate: 0, graduate: 0 } },
+            others: { total: 0, subcategories: { professional_ethicist: 0, journalist: 0 } }
+          });
         }
 
         console.log('Home: Data loaded successfully');
@@ -189,7 +180,7 @@ export function Home() {
 
   return (
     <div className="space-y-16">
-      {/* Hero Section - Restored with full styling */}
+      {/* Hero Section */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -197,7 +188,6 @@ export function Home() {
         className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-950/20 dark:via-indigo-950/20 dark:to-purple-950/20 p-12"
       >
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          {/* Left Column - Content */}
           <div className="space-y-8">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -240,7 +230,6 @@ export function Home() {
               </div>
             </motion.div>
 
-            {/* Quick Stats - Restored styling */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -258,7 +247,6 @@ export function Home() {
             </motion.div>
           </div>
 
-          {/* Right Column - Profile & Skills */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -273,7 +261,6 @@ export function Home() {
               />
             </div>
 
-            {/* Core Expertise - Restored styling */}
             <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm rounded-xl p-6 border border-white/40">
               <h3 className="text-lg font-semibold mb-4">Core Expertise</h3>
               <div className="grid grid-cols-2 gap-3">
@@ -292,14 +279,13 @@ export function Home() {
           </motion.div>
         </div>
 
-        {/* Background decoration - Restored */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-indigo-400/20 to-pink-400/20 rounded-full blur-3xl"></div>
         </div>
       </motion.section>
 
-      {/* Dashboard Cards - Restored with gradients and proper click handlers */}
+      {/* Dashboard Cards */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -351,8 +337,8 @@ export function Home() {
         </Card>
       </motion.section>
 
-      {/* Collaborators Section - Restored with full styling and hover effects */}
-      {collaboratorStats && (
+      {/* Collaborators Section */}
+      {collaboratorStats && totalCollaborators > 0 && (
         <motion.section
           id="collaborators-section"
           initial={{ opacity: 0, y: 20 }}
@@ -507,7 +493,7 @@ export function Home() {
         </motion.section>
       )}
 
-      {/* Featured Projects - Restored styling */}
+      {/* Featured Projects */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -537,7 +523,7 @@ export function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.1 + index * 0.1, duration: 0.6 }}
             >
-              <Link to={'/projects/' + project._id}>
+              <Link to={`/projects/${project._id}`}>
                 <Card className="group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-white/20">
                   <div className="aspect-video overflow-hidden relative">
                     <img

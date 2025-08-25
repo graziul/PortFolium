@@ -3,8 +3,8 @@ const HomeContent = require('../models/HomeContent');
 console.log('HomeContentService: Starting to load HomeContentService module...');
 
 class HomeContentService {
-
-  // Get home content for a specific user
+  
+  // Get home content by user ID
   static async getHomeContentByUserId(userId) {
     console.log('HomeContentService: getHomeContentByUserId called with userId:', userId);
     try {
@@ -16,30 +16,25 @@ class HomeContentService {
       }
       return homeContent;
     } catch (error) {
-      console.error('HomeContentService: Error fetching home content by userId:', error);
+      console.error('HomeContentService: Error fetching home content:', error);
       throw error;
     }
   }
 
   // Create or update home content
-  static async upsertHomeContent(userId, contentData) {
-    console.log('HomeContentService: upsertHomeContent called with userId:', userId);
-    console.log('HomeContentService: Content data:', contentData);
+  static async createOrUpdateHomeContent(userId, homeContentData) {
+    console.log('HomeContentService: createOrUpdateHomeContent called with userId:', userId);
+    console.log('HomeContentService: Home content data:', homeContentData);
     try {
       const homeContent = await HomeContent.findOneAndUpdate(
         { userId },
-        { ...contentData, userId },
-        { 
-          new: true, 
-          upsert: true, 
-          runValidators: true 
-        }
+        homeContentData,
+        { new: true, upsert: true, runValidators: true }
       );
-      
-      console.log('HomeContentService: Home content upserted successfully for user:', userId);
+      console.log('HomeContentService: Home content created/updated successfully');
       return homeContent;
     } catch (error) {
-      console.error('HomeContentService: Error upserting home content:', error);
+      console.error('HomeContentService: Error creating/updating home content:', error);
       throw error;
     }
   }
@@ -49,13 +44,11 @@ class HomeContentService {
     console.log('HomeContentService: deleteHomeContent called with userId:', userId);
     try {
       const result = await HomeContent.findOneAndDelete({ userId });
-
       if (result) {
-        console.log('HomeContentService: Home content deleted successfully for user:', userId);
+        console.log('HomeContentService: Home content deleted successfully');
       } else {
-        console.log('HomeContentService: No home content found to delete for user:', userId);
+        console.log('HomeContentService: No home content found to delete');
       }
-
       return result;
     } catch (error) {
       console.error('HomeContentService: Error deleting home content:', error);

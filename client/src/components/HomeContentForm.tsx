@@ -5,9 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { X, Upload, User, Plus } from 'lucide-react';
-import { getHomeContent, updateHomeContent, uploadProfileImage, HomeContent } from '@/api/homeContent';
-import { getSkills } from '@/api/skills';
+import { X, Upload } from 'lucide-react';
+import { getHomeContent, updateHomeContent, uploadProfileImage } from '@/api/homeContent';
+import { getSkills, Skill } from '@/api/skills';
 import { useToast } from '@/hooks/useToast';
 
 interface HomeContentFormProps {
@@ -16,77 +16,76 @@ interface HomeContentFormProps {
 }
 
 export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [skills, setSkills] = useState<any[]>([]);
-  const [formData, setFormData] = useState<Partial<HomeContent>>({
+  const [dataLoading, setDataLoading] = useState(true);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [formData, setFormData] = useState({
     name: '',
     tagline: '',
     bio: '',
-    headerText: 'Stellar Codex',
-    profileImageUrl: '',
     yearsExperience: 0,
-    coreExpertise: [],
+    coreExpertise: [] as string[],
     socialLinks: {
       linkedin: '',
       github: '',
       twitter: '',
-      website: ''
+      bluesky: ''
     }
   });
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string>('');
+  const { toast } = useToast();
 
   useEffect(() => {
+    const loadData = async () => {
+      try {
+        console.log('HomeContentForm: Loading home content and skills...');
+        setDataLoading(true);
+
+        const [homeContentResponse, skillsResponse] = await Promise.all([
+          getHomeContent(),
+          getSkills()
+        ]);
+
+        const homeContent = homeContentResponse.homeContent;
+        setFormData({
+          name: homeContent.name || '',
+          tagline: homeContent.tagline || '',
+          bio: homeContent.bio || '',
+          yearsExperience: homeContent.yearsExperience || 0,
+          coreExpertise: homeContent.coreExpertise || [],
+          socialLinks: {
+            linkedin: homeContent.socialLinks?.linkedin || '',
+            github: homeContent.socialLinks?.github || '',
+            twitter: homeContent.socialLinks?.twitter || '',
+            bluesky: homeContent.socialLinks?.bluesky || homeContent.socialLinks?.website || ''
+          }
+        });
+
+        if (homeContent.profileImageUrl) {
+          setProfileImagePreview('http://localhost:3000' + homeContent.profileImageUrl);
+        }
+
+        setSkills(skillsResponse.skills);
+        console.log('HomeContentForm: Data loaded successfully');
+      } catch (error) {
+        console.error('HomeContentForm: Error loading data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load form data',
+          variant: 'destructive'
+        });
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
     loadData();
-  }, []);
+  }, [toast]);
 
-  const loadData = async () => {
-    try {
-      console.log('HomeContentForm: Loading home content and skills...');
-
-      const [homeContentResponse, skillsResponse] = await Promise.all([
-        getHomeContent().catch(error => {
-          console.log('HomeContentForm: Home content not found, using defaults');
-          return {
-            homeContent: {
-              name: '',
-              tagline: '',
-              bio: '',
-              headerText: 'Stellar Codex',
-              profileImageUrl: '',
-              yearsExperience: 0,
-              coreExpertise: [],
-              socialLinks: {
-                linkedin: '',
-                github: '',
-                twitter: '',
-                website: ''
-              }
-            }
-          };
-        }),
-        getSkills().catch(error => {
-          console.log('HomeContentForm: Skills not found, using empty array');
-          return { skills: [] };
-        })
-      ]);
-
-      setFormData(homeContentResponse.homeContent);
-      setSkills(skillsResponse.skills || []);
-      console.log('HomeContentForm: Data loaded successfully');
-    } catch (error) {
-      console.error('HomeContentForm: Error loading data:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load data.',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleInputChange = (field: string, value: string | number) => {
+  const handleInputChange = (field: string, value: any) => {
     if (field.startsWith('socialLinks.')) {
-      const socialField = field.split('.')[1];
+      const socialField = field.replace('socialLinks.', '');
       setFormData(prev => ({
         ...prev,
         socialLinks: {
@@ -102,81 +101,57 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
     }
   };
 
-  const addSkillAsExpertise = (skillName: string) => {
-    if (!formData.coreExpertise?.includes(skillName)) {
-      setFormData(prev => ({
-        ...prev,
-        coreExpertise: [...(prev.coreExpertise || []), skillName]
-      }));
-      console.log('HomeContentForm: Added skill as expertise:', skillName);
-    }
-  };
-
-  const removeExpertise = (expertiseToRemove: string) => {
+  const handleExpertiseToggle = (skillName: string) => {
     setFormData(prev => ({
       ...prev,
-      coreExpertise: prev.coreExpertise?.filter(expertise => expertise !== expertiseToRemove) || []
+      coreExpertise: prev.coreExpertise.includes(skillName)
+        ? prev.coreExpertise.filter(e => e !== skillName)
+        : [...prev.coreExpertise, skillName]
     }));
-    console.log('HomeContentForm: Removed expertise:', expertiseToRemove);
   };
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    try {
-      console.log('HomeContentForm: Uploading profile image...');
-      const response = await uploadProfileImage(file);
-      setFormData(prev => ({
-        ...prev,
-        profileImageUrl: response.imageUrl
-      }));
-      console.log('HomeContentForm: Profile image uploaded successfully:', response.imageUrl);
-      toast({
-        title: 'Success',
-        description: 'Profile image uploaded successfully.'
-      });
-    } catch (error) {
-      console.error('HomeContentForm: Error uploading image:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to upload image.',
-        variant: 'destructive'
-      });
-    } finally {
-      setUploading(false);
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setProfileImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfileImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!formData.name?.trim() || !formData.tagline?.trim() || !formData.bio?.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Name, tagline, and bio are required fields.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
     setLoading(true);
 
     try {
-      console.log('HomeContentForm: Saving home content...');
-      await updateHomeContent(formData);
-      console.log('HomeContentForm: Home content saved successfully');
+      let profileImageUrl = '';
+
+      if (profileImage) {
+        const uploadResponse = await uploadProfileImage(profileImage);
+        profileImageUrl = uploadResponse.profileImageUrl;
+      }
+
+      const updateData = {
+        ...formData,
+        ...(profileImageUrl && { profileImageUrl })
+      };
+
+      await updateHomeContent(updateData);
+
       toast({
         title: 'Success',
-        description: 'Home content updated successfully.'
+        description: 'Home content updated successfully'
       });
+
       onSuccess?.();
-    } catch (error) {
-      console.error('HomeContentForm: Error saving home content:', error);
+    } catch (error: any) {
+      console.error('HomeContentForm: Error updating home content:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to save home content.',
+        description: error.message || 'Failed to update home content',
         variant: 'destructive'
       });
     } finally {
@@ -184,48 +159,51 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
     }
   };
 
+  if (dataLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
     <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
         <CardTitle>Edit Home Page Content</CardTitle>
         <CardDescription>
-          Update your home page information, profile image, and social links
+          Update your personal information and profile settings
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Profile Image Section */}
+          {/* Profile Image */}
           <div className="space-y-4">
             <Label>Profile Image</Label>
             <div className="flex items-center gap-4">
-              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                {formData.profileImageUrl ? (
-                  <img
-                    src={`http://localhost:3000${formData.profileImageUrl}`}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <User className="w-8 h-8 text-gray-400" />
-                )}
-              </div>
+              {profileImagePreview && (
+                <img
+                  src={profileImagePreview}
+                  alt="Profile preview"
+                  className="w-20 h-20 rounded-full object-cover"
+                />
+              )}
               <div>
-                <input
+                <Input
                   type="file"
                   accept="image/*"
-                  onChange={handleImageUpload}
+                  onChange={handleImageChange}
                   className="hidden"
                   id="profile-image"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => document.getElementById('profile-image')?.click()}
-                  disabled={uploading}
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  {uploading ? 'Uploading...' : 'Upload Image'}
-                </Button>
+                <Label htmlFor="profile-image" className="cursor-pointer">
+                  <Button type="button" variant="outline" asChild>
+                    <span>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Image
+                    </span>
+                  </Button>
+                </Label>
               </div>
             </div>
           </div>
@@ -233,13 +211,12 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
           {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
+              <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
-                value={formData.name || ''}
+                value={formData.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
                 placeholder="Your full name"
-                required
               />
             </div>
 
@@ -248,85 +225,61 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
               <Input
                 id="yearsExperience"
                 type="number"
-                value={formData.yearsExperience || 0}
+                value={formData.yearsExperience}
                 onChange={(e) => handleInputChange('yearsExperience', parseInt(e.target.value) || 0)}
                 placeholder="0"
-                min="0"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="tagline">Professional Tagline *</Label>
+            <Label htmlFor="tagline">Professional Tagline</Label>
             <Input
               id="tagline"
-              value={formData.tagline || ''}
+              value={formData.tagline}
               onChange={(e) => handleInputChange('tagline', e.target.value)}
-              placeholder="Your professional tagline or title"
-              required
+              placeholder="Your professional tagline"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="headerText">Site Header Text</Label>
-            <Input
-              id="headerText"
-              value={formData.headerText || ''}
-              onChange={(e) => handleInputChange('headerText', e.target.value)}
-              placeholder="Stellar Codex"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="bio">Bio *</Label>
+            <Label htmlFor="bio">Bio</Label>
             <Textarea
               id="bio"
-              value={formData.bio || ''}
+              value={formData.bio}
               onChange={(e) => handleInputChange('bio', e.target.value)}
               placeholder="Tell your professional story..."
               rows={4}
-              required
             />
           </div>
 
-          {/* Core Expertise - Only allow selection from existing skills */}
-          <div className="space-y-2">
-            <Label>Core Expertise</Label>
-            <p className="text-sm text-gray-600">Select from your existing skills to highlight as core expertise:</p>
-
-            {/* Skills Selection */}
-            {skills.length > 0 ? (
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-2">
-                  {skills
-                    .filter(skill => !formData.coreExpertise?.includes(skill.name))
-                    .map((skill) => (
-                    <Button
-                      key={skill._id}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addSkillAsExpertise(skill.name)}
-                      className="text-xs"
-                    >
-                      <Plus className="w-3 h-3 mr-1" />
-                      {skill.name}
-                    </Button>
-                  ))}
+          {/* Core Expertise */}
+          <div className="space-y-4">
+            <Label>Core Expertise (Select up to 4)</Label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {skills.map((skill) => (
+                <div
+                  key={skill._id}
+                  onClick={() => handleExpertiseToggle(skill.name)}
+                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    formData.coreExpertise.includes(skill.name)
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background border-border hover:border-primary/50'
+                  }`}
+                >
+                  <div className="text-sm font-medium">{skill.name}</div>
+                  <div className="text-xs opacity-70">{skill.category}</div>
                 </div>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500">No skills available. Please add skills on the Skills page first.</p>
-            )}
-
-            {formData.coreExpertise && formData.coreExpertise.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
+              ))}
+            </div>
+            {formData.coreExpertise.length > 0 && (
+              <div className="flex flex-wrap gap-2">
                 {formData.coreExpertise.map((expertise, index) => (
                   <Badge key={index} variant="secondary" className="flex items-center gap-1">
                     {expertise}
                     <X
                       className="h-3 w-3 cursor-pointer"
-                      onClick={() => removeExpertise(expertise)}
+                      onClick={() => handleExpertiseToggle(expertise)}
                     />
                   </Badge>
                 ))}
@@ -342,9 +295,9 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
                 <Label htmlFor="linkedin">LinkedIn</Label>
                 <Input
                   id="linkedin"
-                  value={formData.socialLinks?.linkedin || ''}
+                  value={formData.socialLinks.linkedin}
                   onChange={(e) => handleInputChange('socialLinks.linkedin', e.target.value)}
-                  placeholder="https://linkedin.com/in/yourprofile"
+                  placeholder="https://linkedin.com/in/..."
                 />
               </div>
 
@@ -352,9 +305,9 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
                 <Label htmlFor="github">GitHub</Label>
                 <Input
                   id="github"
-                  value={formData.socialLinks?.github || ''}
+                  value={formData.socialLinks.github}
                   onChange={(e) => handleInputChange('socialLinks.github', e.target.value)}
-                  placeholder="https://github.com/yourusername"
+                  placeholder="https://github.com/..."
                 />
               </div>
 
@@ -362,19 +315,19 @@ export function HomeContentForm({ onSuccess, onCancel }: HomeContentFormProps) {
                 <Label htmlFor="twitter">Twitter</Label>
                 <Input
                   id="twitter"
-                  value={formData.socialLinks?.twitter || ''}
+                  value={formData.socialLinks.twitter}
                   onChange={(e) => handleInputChange('socialLinks.twitter', e.target.value)}
-                  placeholder="https://twitter.com/yourusername"
+                  placeholder="https://twitter.com/..."
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="website">Website</Label>
+                <Label htmlFor="bluesky">Bluesky</Label>
                 <Input
-                  id="website"
-                  value={formData.socialLinks?.website || ''}
-                  onChange={(e) => handleInputChange('socialLinks.website', e.target.value)}
-                  placeholder="https://yourwebsite.com"
+                  id="bluesky"
+                  value={formData.socialLinks.bluesky}
+                  onChange={(e) => handleInputChange('socialLinks.bluesky', e.target.value)}
+                  placeholder="https://bsky.app/profile/..."
                 />
               </div>
             </div>
